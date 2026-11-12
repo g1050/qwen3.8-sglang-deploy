@@ -13,6 +13,8 @@ def host_memory_gb():
 
 def l2_size_gb(l2, tp_size, memory_gb):
     """Per-rank host cache size: as large as host memory allows after the fixed reserve."""
+    if os.environ.get('QWEN_L2_SIZE_GB'):   # stress tests shrink L2 to reach eviction quickly
+        return int(os.environ['QWEN_L2_SIZE_GB'])
     if l2.get('hicache_size_gb'):
         return int(l2['hicache_size_gb'])
     size = int((memory_gb - l2['reserve_gb']) // tp_size)
@@ -41,7 +43,7 @@ def apply_profile(cfg, server_args, server_env, profile, memory_gb=None, disk_by
     if ttl.get('enabled'):
         server_env.update(PYTHONPATH='/compat', QWEN_TTL_KEEP_SECONDS=str(ttl['keep_seconds']))
         # Acceptance / benchmark-only switches, taken from the operator's environment.
-        for name in ('QWEN_TTL_TEST_CLOCK', 'QWEN_TTL_DEFAULT_SECONDS'):
+        for name in ('QWEN_TTL_TEST_CLOCK', 'QWEN_TTL_DEFAULT_SECONDS', 'QWEN_TTL_L3_WRITES'):
             if os.environ.get(name):
                 server_env[name] = os.environ[name]
                 record[name.lower()] = os.environ[name]

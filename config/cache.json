@@ -25,17 +25,19 @@
     "cache_format": "qwen38-v020-file-v1",
     "args": {
       "hicache-storage-backend": "file",
-      "hicache-storage-prefetch-policy": "timeout"
+      "hicache-storage-prefetch-policy": "timeout",
+      "hicache-storage-prefetch-retry-max-attempts": 1
     },
     "storage": {
       "min_free_space": "1Ti",
       "eviction_ratio": 0.9,
-      "enable_metadata_cache": false
+      "enable_metadata_cache": true,
+      "metadata_ttl": -1
     },
     "endurance_dwpd": 1,
     "disk_share": 0.5,
     "kv_bytes_per_token": 140000,
-    "burst_seconds": 3600,
+    "burst_seconds": 600,
     "sizing": "每日写入预算 = endurance_dwpd × 磁盘容量 × disk_share；写入速率上限(token/s) = 预算 / 86400 / kv_bytes_per_token；每 rank 配额 = 预算 × keep_seconds / 86400 / tp-size。kv_bytes_per_token 为 8 个 rank 合计（由主机 KV 池 24.81 GB / 1425344 token 推算）。"
   }
 }

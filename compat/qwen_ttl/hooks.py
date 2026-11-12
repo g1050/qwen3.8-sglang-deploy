@@ -3,6 +3,7 @@
 Ranks stay identical without extra broadcasts: the only clock is the HTTP arrival stamp
 carried by each request, and SGLang already delivers the same request list to every rank.
 """
+from array import array
 from dataclasses import replace
 from functools import wraps
 import heapq
@@ -28,10 +29,13 @@ class State:
         self.cache = None
         # L3 (file) tier: only valid 1h leases are written, at the L2 eviction tail, within a token budget.
         self.l3_rate = float(os.environ.get('QWEN_TTL_L3_TOKENS_PER_SECOND', '0'))
+        if os.environ.get('QWEN_TTL_L3_WRITES') == '0':   # diagnosis: storage attached, nothing written
+            self.l3_rate = 0.0
         self.l3_burst = float(os.environ.get('QWEN_TTL_L3_BURST_TOKENS', '0'))
         self.l3_budget = self.l3_burst
         self.l3_refilled = 0.0
         self.l3_writing = False
+        self.l3_keys = set()
         self.last_1h = float('-inf')
         self.purged = time.monotonic()
 
@@ -148,6 +152,7 @@ def backup_tail(core, num_tokens):
         finally:
             STATE.l3_writing = False
         node._ttl_l3 = True
+        remember_storage(node)
         count('l3_written', tokens)
 
 
@@ -179,15 +184,30 @@ def purge_storage():
                 break
 
 
-def wants_storage(req):
-    """Only a retained 1h lease can have an L3 copy; everything else skips storage lookups."""
-    rows, keep, now = STATE.table.rows, STATE.table.keep, STATE.now
-    for key in prompt_keys(req):
-        row = rows.get(key)
-        if row is None or now >= row[0] + keep:
-            return False
-        if row[2] == 3600:
-            return True
+def remember_storage(node):
+    """Record the lease blocks of a path whose tail was just written to L3."""
+    parts = []
+    walk = node
+    while walk is not None and walk.key is not None:
+        parts.append(walk.key.raw_token_ids())
+        walk = walk.parent
+    tokens = array('q')
+    for part in reversed(parts):
+        tokens.extend(part)
+    keys = page_keys(tokens, STATE.page_size, node.key.cache_salt, node.key.extra_key)
+    start = (len(tokens) - len(node.key)) // STATE.page_size
+    STATE.l3_keys.update(keys[start:])
+
+
+def storage_candidate(req, matched):
+    """Whether the block right after the L1+L2 match was written to L3 under a retained lease."""
+    keys = prompt_keys(req)
+    index = matched // STATE.page_size
+    known = STATE.l3_keys
+    for key in keys[index:index + 2]:
+        if key in known:
+            row = STATE.table.rows.get(key)
+            return row is not None and STATE.now < row[0] + STATE.table.keep
     return False
 
 
@@ -290,9 +310,16 @@ def install_classes(cache_class, req_class, batch_class, scheduler_class, stream
     def prefetch(self, req, storage_hit_end=None):
         if not hasattr(req, '_ttl_seconds'):
             return original_prefetch(self, req, storage_hit_end)
-        if not self.enable_hicache_storage or not wants_storage(req):
+        if not self.enable_hicache_storage:
             return None
-        reuse_limit(req)
+        # Look on disk only for what L1+L2 no longer hold and a 1h lease still covers. Nearly
+        # every request is fully served from memory; an unconditional lookup stalls admission.
+        req.init_next_round_input(self.tree_cache, cow_mamba=False)
+        matched = len(req.prefix_indices) + req.host_hit_length
+        if not storage_candidate(req, matched):
+            req.storage_prefetch_last_match_len = matched
+            return None
+        count('l3_lookup', 1)
         req._ttl_prefetching = True
         try:
             return original_prefetch(self, req, storage_hit_end)
@@ -306,7 +333,9 @@ def install_classes(cache_class, req_class, batch_class, scheduler_class, stream
         result = original_extend(self)
         for req in first:
             admit(req)
-        STATE.counters['swept_rows'] += STATE.table.sweep(STATE.now)
+        swept = STATE.table.sweep(STATE.now)
+        if swept and STATE.l3_keys:
+            STATE.l3_keys.intersection_update(STATE.table.rows)
         if STATE.l3_rate:
             purge_storage()
         return result
