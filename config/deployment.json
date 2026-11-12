@@ -26,6 +26,7 @@
     "cuda-graph-backend-decode": "disabled",
     "fp8-gemm-backend": "triton",
     "enable-metrics": true,
+    "enable-cache-report": true,
     "reasoning-parser": "qwen3",
     "tool-call-parser": "qwen3_coder"
   },
