@@ -1,6 +1,7 @@
 """Pure rendering of the cache profile (TTL / file L3); no filesystem or service changes."""
 import hashlib
 import json
+import os
 
 
 def host_memory_gb():
@@ -39,6 +40,8 @@ def apply_profile(cfg, server_args, server_env, profile, memory_gb=None, disk_by
     server_env = dict(server_env)
     if ttl.get('enabled'):
         server_env.update(PYTHONPATH='/compat', QWEN_TTL_KEEP_SECONDS=str(ttl['keep_seconds']))
+        if os.environ.get('QWEN_TTL_TEST_CLOCK') == '1':
+            server_env['QWEN_TTL_TEST_CLOCK'] = '1'
         record['ttl_keep_seconds'] = ttl['keep_seconds']
     if not l3.get('enabled'):
         return server_args, server_env, record

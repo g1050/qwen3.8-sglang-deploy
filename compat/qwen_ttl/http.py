@@ -4,6 +4,7 @@ The engine reports the billing view only; this layer adds the write fields and h
 """
 from contextvars import ContextVar
 import json
+import os
 import time
 
 from qwen_ttl.core import DEFAULT_TTL, PolicyError, encode_carrier, parse_options
@@ -11,6 +12,8 @@ from qwen_ttl.core import DEFAULT_TTL, PolicyError, encode_carrier, parse_option
 APIS = {'/v1/chat/completions': 'chat', '/v1/completions': 'chat', '/v1/responses': 'responses',
         '/v1/messages': 'messages'}
 CONTEXT = ContextVar('qwen_ttl_request', default=None)
+# Acceptance only: lets a test supply the arrival time instead of waiting an hour.
+TEST_CLOCK = os.environ.get('QWEN_TTL_TEST_CLOCK') == '1'
 
 
 def capture(output, context):
@@ -117,6 +120,10 @@ class TTLMiddleware:
         except ValueError:
             pass   # the engine reports malformed JSON itself
         context = {'ttl': ttl, 'bills': {}}
+        if TEST_CLOCK:
+            stamp = next((value for key, value in scope['headers'] if key == b'x-qwen-ttl-now'), None)
+            if stamp is not None:
+                context['now'] = float(stamp)
         token = CONTEXT.set(context)
         sent = False
 
@@ -191,7 +198,8 @@ def install(app):
     async def generate_request(self, obj, request=None):
         context = CONTEXT.get()
         if isinstance(obj, GenerateReqInput):
-            ttl, stamp = (context['ttl'] if context else DEFAULT_TTL), time.time()
+            ttl = context['ttl'] if context else DEFAULT_TTL
+            stamp = context.get('now') or time.time() if context else time.time()
             salt = obj.cache_salt
             obj.cache_salt = ([encode_carrier(ttl, stamp, item) for item in salt] if isinstance(salt, list)
                               else encode_carrier(ttl, stamp, salt))
