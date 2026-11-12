@@ -33,7 +33,8 @@ def main():
     with urllib.request.urlopen(f"http://127.0.0.1:{CFG['port']}/server_info", timeout=30) as response:
         info = json.load(response)
     # The measured engine must be the simulated-acceptance MTP build of this project.
-    if str(info.get('speculative_algorithm', '')).upper() != 'NEXTN' or info.get('speculative_num_steps') != CFG['performance']['args']['speculative-num-steps']:
+    # SGLang reports NEXTN (native MTP) under its EAGLE worker name.
+    if str(info.get('speculative_algorithm', '')).upper() not in ('NEXTN', 'EAGLE') or info.get('speculative_num_steps') != CFG['performance']['args']['speculative-num-steps']:
         raise ValueError('Port is not served by the performance profile (native MTP)')
     snapshot = RUNTIME / 'hf/hub' / ('datasets--' + BENCH['dataset'].replace('/', '--')) / 'snapshots' / BENCH['dataset_revision']
     if not (snapshot / 'traces.jsonl').is_file():
