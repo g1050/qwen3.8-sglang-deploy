@@ -40,8 +40,11 @@ def apply_profile(cfg, server_args, server_env, profile, memory_gb=None, disk_by
     server_env = dict(server_env)
     if ttl.get('enabled'):
         server_env.update(PYTHONPATH='/compat', QWEN_TTL_KEEP_SECONDS=str(ttl['keep_seconds']))
-        if os.environ.get('QWEN_TTL_TEST_CLOCK') == '1':
-            server_env['QWEN_TTL_TEST_CLOCK'] = '1'
+        # Acceptance / benchmark-only switches, taken from the operator's environment.
+        for name in ('QWEN_TTL_TEST_CLOCK', 'QWEN_TTL_DEFAULT_SECONDS'):
+            if os.environ.get(name):
+                server_env[name] = os.environ[name]
+                record[name.lower()] = os.environ[name]
         record['ttl_keep_seconds'] = ttl['keep_seconds']
     if not l3.get('enabled'):
         return server_args, server_env, record

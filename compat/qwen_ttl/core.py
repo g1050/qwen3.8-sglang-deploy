@@ -7,10 +7,13 @@ from array import array
 import base64
 import hashlib
 import json
+import os
 import sys
 
 TIERS = {'5m': 300, '1h': 3600}
-DEFAULT_TTL = 300
+# Kimi's default is 5m; the override exists so a benchmark client that sends no option can exercise 1h.
+DEFAULT_TTL = int(os.environ.get('QWEN_TTL_DEFAULT_SECONDS', '300'))
+assert DEFAULT_TTL in (300, 3600)
 CARRIER = 'qwen-ttl-v2:'
 
 
@@ -166,8 +169,8 @@ def bill(prompt_tokens, page_size, read_pages, tier):
 
 
 def readable_pages(prompt_tokens, page_size):
-    """The engine always recomputes the last prompt token, so a page-aligned prompt keeps one page out."""
-    return max(prompt_tokens - 1, 0) // page_size
+    """Every complete block can be billed as read; the engine recomputing the last token is internal."""
+    return prompt_tokens // page_size
 
 
 class ReferenceModel:

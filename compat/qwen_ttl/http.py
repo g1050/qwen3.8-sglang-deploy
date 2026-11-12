@@ -161,9 +161,16 @@ class TTLMiddleware:
             body = message.get('body', b'')
             if streaming:
                 if start is not None:
-                    # The first chunk follows admission, so the bill headers are already known.
+                    # Headers carry the bill, which exists once the request is admitted. Events
+                    # emitted before that (e.g. response.created) wait; no token precedes admission.
+                    if bill is None and message.get('more_body'):
+                        buffered.append(body)
+                        return
                     await send(with_bill_headers(start, bill))
                     start = None
+                    for early in buffered:
+                        await send({'type': 'http.response.body', 'body': early, 'more_body': True})
+                    buffered.clear()
                 if bill and b'"usage"' in body:
                     body = patch_sse(body, api, bill)
                 return await send({**message, 'body': body})

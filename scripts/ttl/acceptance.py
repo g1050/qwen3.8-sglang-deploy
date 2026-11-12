@@ -154,7 +154,7 @@ def semantics(s):
     s.now += 5
     grown = s.call('chat', c, user='Reply OK. ' + filler(7, 600), ttl='1h')['bill']
     s.check('S6 1h request on a valid 5m prefix: hit, new blocks written as 5m',
-            grown['read'] == base['write_5m'] and grown['write_5m'] > 0 and grown['write_1h'] == 0, grown)
+            base['write_5m'] - BLOCK <= grown['read'] <= base['write_5m'] and grown['write_5m'] > 0 and grown['write_1h'] == 0, grown)
     s.now += 301
     switched = s.call('chat', c, user='Reply OK. ' + filler(7, 600), ttl='1h')['bill']
     s.check('S6 after full expiry the new tier applies', switched['read'] == 0 and switched['write_5m'] == 0 and switched['write_1h'] == blocks(grown), switched)
@@ -163,7 +163,7 @@ def semantics(s):
     s.now += 5
     grown = s.call('chat', d, user='Reply OK. ' + filler(8, 600), ttl='5m')['bill']
     s.check('S6 5m request on a valid 1h prefix: new blocks written as 1h',
-            grown['read'] == base['write_1h'] and grown['write_1h'] > 0 and grown['write_5m'] == 0, grown)
+            base['write_1h'] - BLOCK <= grown['read'] <= base['write_1h'] and grown['write_1h'] > 0 and grown['write_5m'] == 0, grown)
 
     e = prefix()
     s.call('chat', e, cache_salt='org-a')

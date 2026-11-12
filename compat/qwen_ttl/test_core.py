@@ -96,10 +96,10 @@ class Semantics(unittest.TestCase):
         self.assertEqual(ref.request(3000, longer, ttl=300)['read'], 60)       # locked 1h, renewed as 1h
         self.assertEqual(ref.request(6500, longer, ttl=300)['read'], 60)
 
-    def test_aligned_prompt_keeps_last_page_out(self):
+    def test_aligned_prompt_is_a_full_hit(self):
         ref, a = ReferenceModel(PAGE), tokens(4, 3, tail=0)
         ref.request(0, a)
-        self.assertEqual(ref.request(1, a), {'read': 8, 'write_5m': 4, 'write_1h': 0, 'input': 0})
+        self.assertEqual(ref.request(1, a), {'read': 12, 'write_5m': 0, 'write_1h': 0, 'input': 0})
 
 
 class Differential(unittest.TestCase):
