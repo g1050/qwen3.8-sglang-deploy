@@ -3,16 +3,44 @@ import hashlib
 import json
 
 
-def apply_profile(cfg, server_args, server_env, profile):
-    """Return (args, env, record). With TTL and L3 disabled the inputs pass through unchanged."""
+def host_memory_gb():
+    for line in open('/proc/meminfo'):
+        if line.startswith('MemTotal:'):
+            return int(line.split()[1]) / 1024 ** 2
+    raise ValueError('MemTotal not found')
+
+
+def l2_size_gb(l2, tp_size, memory_gb):
+    """Per-rank host cache size: as large as host memory allows after the fixed reserve."""
+    if l2.get('hicache_size_gb'):
+        return int(l2['hicache_size_gb'])
+    size = int((memory_gb - l2['reserve_gb']) // tp_size)
+    if size < 1:
+        raise ValueError('Not enough host memory for an L2 cache; disable l2 in config/cache.json')
+    return size
+
+
+def apply_profile(cfg, server_args, server_env, profile, memory_gb=None):
+    """Return (args, env, record) with the enabled cache tiers rendered into the server arguments."""
     ttl, l3 = profile['ttl'], profile['l3']
     if ttl.get('enabled'):
         raise ValueError('TTL is not available in v0.1.0: the Kimi TTL adapter has not been '
                          'ported to this SGLang build. Keep config/cache.json ttl.enabled=false.')
-    record = {'ttl_enabled': False, 'l3_enabled': bool(l3.get('enabled')),
+    l2 = profile['l2']
+    record = {'ttl_enabled': False, 'l2_enabled': bool(l2.get('enabled')), 'l3_enabled': bool(l3.get('enabled')),
               'gpu_prefix_cache': 'native RadixAttention, unchanged'}
+    server_args = dict(server_args)
+    if l2.get('enabled'):
+        memory_gb = host_memory_gb() if memory_gb is None else memory_gb
+        size = l2_size_gb(l2, int(server_args['tp-size']), memory_gb)
+        server_args.update(l2['args'])
+        server_args['hicache-size'] = size
+        record.update(l2_hicache_size_gb=size, l2_host_memory_gb=round(memory_gb, 1),
+                      l2_total_gb=size * int(server_args['tp-size']) )
+    elif l3.get('enabled'):
+        raise ValueError('L3 requires the L2 host cache; enable l2 in config/cache.json')
     if not l3.get('enabled'):
-        return dict(server_args), dict(server_env), record
+        return server_args, dict(server_env), record
     # Native raw files omit dtype/layout in their keys, so namespace the storage
     # directory by image, format and the effective arguments.
     identity = {'format': l3['cache_format'], 'image': cfg['image_id'],

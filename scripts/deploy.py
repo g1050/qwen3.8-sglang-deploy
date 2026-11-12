@@ -120,7 +120,7 @@ def start(profile):
     (RUNTIME / 'effective-deployment.json').write_text(json.dumps(record, indent=2, ensure_ascii=False) + '\n')
     args = ['run', '-d', '--name', record['container_name'], '--init', '--ipc=host', '--gpus=all',
             '-p', f"{CFG['port']}:{CFG['port']}",
-            '--log-driver=json-file', '--log-opt=max-size=100m', '--log-opt=max-file=3',
+            '--ulimit=memlock=-1:-1', '--log-driver=json-file', '--log-opt=max-size=100m', '--log-opt=max-file=3',
             '-v', f"{HOST['model_dir']}:/model:ro", '-v', f'{cache}:/cache:rw']
     if profile == 'service':
         args.append('--restart=unless-stopped')

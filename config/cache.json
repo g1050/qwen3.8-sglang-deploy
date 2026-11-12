@@ -1,15 +1,28 @@
 {
-  "comment": "TTL 与 L3 默认关闭；原生 GPU 前缀缓存(RadixAttention)不受影响。",
+  "comment": "L2(主机内存 HiCache)默认开启并按内存自动定容；TTL 与 L3 默认关闭。",
+  "l2": {
+    "enabled": true,
+    "status": "SGLang 原生 HiCache 主机内存层；容量按本机内存自动计算",
+    "hicache_size_gb": null,
+    "reserve_gb": 120,
+    "sizing": "hicache-size = floor((MemTotal - reserve_gb) / tp-size)，为每个 rank 的主机缓存总量（引擎在其中划分 KV 池与 Mamba 状态池）。reserve_gb 留给 8 个 rank 进程、压测客户端、系统与页缓存。",
+    "args": {
+      "page-size": 64,
+      "enable-hierarchical-cache": true,
+      "hicache-io-backend": "kernel",
+      "hicache-mem-layout": "page_first",
+      "hicache-write-policy": "write_through_selective"
+    }
+  },
   "ttl": {
     "enabled": false,
     "status": "v0.1.0 未移植 kimi3.1 的 TTL 适配层；置为 true 时 deploy.py 拒绝启动"
   },
   "l3": {
     "enabled": false,
-    "status": "仅渲染 SGLang 原生 file 后端参数，尚未在本机 GPU 上验收",
+    "status": "仅渲染 SGLang 原生 file 后端参数，尚未在本机 GPU 上验收；需要 L2 开启",
     "cache_format": "qwen38-v010-file-v1",
     "args": {
-      "enable-hierarchical-cache": true,
       "hicache-storage-backend": "file",
       "hicache-storage-prefetch-policy": "timeout"
     },
