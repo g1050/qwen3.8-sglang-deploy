@@ -35,6 +35,7 @@ class State:
         self.l3_budget = self.l3_burst
         self.l3_refilled = 0.0
         self.l3_writing = False
+        self.tail_demand = 0
         self.l3_keys = set()
         self.last_1h = float('-inf')
         self.purged = time.monotonic()
@@ -50,6 +51,7 @@ class Metrics:
         from prometheus_client import Counter, Gauge, Histogram
         self.tokens = Counter('qwen_ttl_tokens', 'Prompt tokens by TTL accounting class', ['kind'])
         self.requests = Counter('qwen_ttl_requests', 'Admitted requests by requested tier', ['tier'])
+        self.seconds = Counter('qwen_ttl_overhead_seconds', 'Scheduler time spent in TTL bookkeeping (rank 0)', ['part'])
         self.rows = Gauge('qwen_ttl_lease_rows', 'Lease table rows', multiprocess_mode='livesum')
         self.idle = Histogram('qwen_ttl_idle_seconds', 'Idle time of a reused prefix when it is used again', ['kind'],
                               buckets=(10, 30, 60, 120, 300, 600, 1200, 1800, 3600, 5400, 7200))
@@ -132,11 +134,23 @@ def l3_take(tokens):
     return True
 
 
+TAIL_WINDOW = 65536     # tokens of upcoming L2 eviction that one tail scan covers
+
+
 def backup_tail(core, num_tokens):
-    """Before L2 evicts, persist the valid 1h leaves at its tail. The write pins them past this pass."""
+    """Persist the valid 1h leaves at the L2 eviction tail before they are evicted.
+
+    A scan sorts every host leaf, so it runs once per TAIL_WINDOW / 2 tokens of eviction
+    demand (a rank-consistent count), not on every eviction call. Writes pin their node.
+    """
+    STATE.tail_demand += num_tokens
+    if STATE.tail_demand < TAIL_WINDOW // 2:
+        return
+    STATE.tail_demand = 0
+    started = time.perf_counter()
     now, covered = STATE.now, 0
-    for node in heapq.nsmallest(64, core.evictable_host_leaves, key=core.eviction_strategy.get_priority):
-        if covered >= 2 * num_tokens:
+    for node in heapq.nsmallest(256, core.evictable_host_leaves, key=core.eviction_strategy.get_priority):
+        if covered >= TAIL_WINDOW:
             break
         tokens = len(node.key)
         covered += tokens
@@ -154,6 +168,12 @@ def backup_tail(core, num_tokens):
         node._ttl_l3 = True
         remember_storage(node)
         count('l3_written', tokens)
+    spend('tail_scan', started)
+
+
+def spend(part, started):
+    if METRICS[0] is not None:
+        METRICS[0].seconds.labels(part).inc(time.perf_counter() - started)
 
 
 def count(kind, tokens):
@@ -293,7 +313,9 @@ def install_classes(cache_class, req_class, batch_class, scheduler_class, stream
         if req is None or not hasattr(req, '_ttl_seconds') or self.disable:
             return original_match(self, params)
         key = params.key
+        started = time.perf_counter()
         limit = min(key._raw_len(), reuse_limit(req))
+        spend('match', started)
         # Never modify the caller's RadixKey; native prefetch and hashing may retain it.
         bounded = type(key)(key.token_ids, key.extra_key, is_bigram=key.is_bigram, limit=limit,
                             cache_salt=key.cache_salt)
@@ -314,8 +336,10 @@ def install_classes(cache_class, req_class, batch_class, scheduler_class, stream
             return None
         # Look on disk only for what L1+L2 no longer hold and a 1h lease still covers. Nearly
         # every request is fully served from memory; an unconditional lookup stalls admission.
+        started = time.perf_counter()
         req.init_next_round_input(self.tree_cache, cow_mamba=False)
         matched = len(req.prefix_indices) + req.host_hit_length
+        spend('storage_gate', started)
         if not storage_candidate(req, matched):
             req.storage_prefetch_last_match_len = matched
             return None
@@ -331,8 +355,11 @@ def install_classes(cache_class, req_class, batch_class, scheduler_class, stream
         first = [req for req in self.reqs if hasattr(req, '_ttl_seconds') and not hasattr(req, '_ttl_bill')
                  and not req._cache_breakdown_computed and not req.retracted_stain]
         result = original_extend(self)
-        for req in first:
-            admit(req)
+        if first:
+            started = time.perf_counter()
+            for req in first:
+                admit(req)
+            spend('admit', started)
         swept = STATE.table.sweep(STATE.now)
         if swept and STATE.l3_keys:
             STATE.l3_keys.intersection_update(STATE.table.rows)
