@@ -1,0 +1,23 @@
+{
+  "comment": "TTL 与 L3 默认关闭；原生 GPU 前缀缓存(RadixAttention)不受影响。",
+  "ttl": {
+    "enabled": false,
+    "status": "v0.1.0 未移植 kimi3.1 的 TTL 适配层；置为 true 时 deploy.py 拒绝启动"
+  },
+  "l3": {
+    "enabled": false,
+    "status": "仅渲染 SGLang 原生 file 后端参数，尚未在本机 GPU 上验收",
+    "cache_format": "qwen38-v010-file-v1",
+    "args": {
+      "enable-hierarchical-cache": true,
+      "hicache-storage-backend": "file",
+      "hicache-storage-prefetch-policy": "timeout"
+    },
+    "storage": {
+      "max_size": "128Gi",
+      "min_free_space": "1Ti",
+      "eviction_ratio": 0.9,
+      "enable_metadata_cache": false
+    }
+  }
+}

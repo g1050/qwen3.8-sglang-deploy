@@ -1,0 +1,8 @@
+{
+  "model_dir": "/data/models/Qwen3.8-27B-FP8",
+  "cache_dir": "/data/fast/sglang-cache/qwen38",
+  "inferencex_dir": "/data/xkgao/InferenceX",
+  "dataset_dir": "/data/models/cc-traces-weka-062126",
+  "pip_index_url": "https://pypi.tuna.tsinghua.edu.cn/simple",
+  "hf_endpoint": "https://hf-mirror.com"
+}

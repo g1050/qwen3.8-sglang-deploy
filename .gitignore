@@ -1,0 +1,16 @@
+/runtime/
+/config/host.json
+__pycache__/
+*.pyc
+*.log
+*.safetensors
+*.bin
+*.pt
+*.pth
+*.whl
+*.tar
+*.tar.gz
+*.tar.zst
+*.zip
+*.gguf
+.env
