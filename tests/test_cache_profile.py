@@ -15,8 +15,7 @@ PROFILE = json.loads((ROOT / 'config/cache.json').read_text())
 class CacheProfile(unittest.TestCase):
     def test_default_disables_ttl_and_l3(self):
         args, env, record = apply_profile(CFG, CFG['args'], CFG['env'], PROFILE, memory_gb=503)
-        self.assertEqual(env, CFG['env'])
-        self.assertFalse(record['ttl_enabled'] or record['l3_enabled'])
+        self.assertFalse(record['l3_enabled'])
         self.assertFalse(any(k.startswith('hicache-storage') for k in args))
 
     def test_l2_is_sized_from_host_memory(self):
@@ -30,14 +29,14 @@ class CacheProfile(unittest.TestCase):
     def test_l2_can_be_disabled(self):
         profile = copy.deepcopy(PROFILE)
         profile['l2']['enabled'] = False
+        profile['ttl']['enabled'] = False
         args, env, _ = apply_profile(CFG, CFG['args'], CFG['env'], profile)
         self.assertEqual((args, env), (CFG['args'], CFG['env']))
 
-    def test_ttl_is_refused(self):
-        profile = copy.deepcopy(PROFILE)
-        profile['ttl']['enabled'] = True
-        with self.assertRaises(ValueError):
-            apply_profile(CFG, CFG['args'], CFG['env'], profile)
+    def test_ttl_adds_adapter_environment(self):
+        _, env, record = apply_profile(CFG, CFG['args'], CFG['env'], PROFILE, memory_gb=503)
+        self.assertEqual((env['PYTHONPATH'], env['QWEN_TTL_KEEP_SECONDS']), ('/compat', '7200'))
+        self.assertTrue(record['ttl_enabled'])
 
     def test_l3_renders_namespaced_file_backend(self):
         profile = copy.deepcopy(PROFILE)

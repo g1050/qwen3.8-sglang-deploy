@@ -23,11 +23,8 @@ def l2_size_gb(l2, tp_size, memory_gb):
 def apply_profile(cfg, server_args, server_env, profile, memory_gb=None):
     """Return (args, env, record) with the enabled cache tiers rendered into the server arguments."""
     ttl, l3 = profile['ttl'], profile['l3']
-    if ttl.get('enabled'):
-        raise ValueError('TTL is not available in v0.1.0: the Kimi TTL adapter has not been '
-                         'ported to this SGLang build. Keep config/cache.json ttl.enabled=false.')
     l2 = profile['l2']
-    record = {'ttl_enabled': False, 'l2_enabled': bool(l2.get('enabled')), 'l3_enabled': bool(l3.get('enabled')),
+    record = {'ttl_enabled': bool(ttl.get('enabled')), 'l2_enabled': bool(l2.get('enabled')), 'l3_enabled': bool(l3.get('enabled')),
               'gpu_prefix_cache': 'native RadixAttention, unchanged'}
     server_args = dict(server_args)
     if l2.get('enabled'):
@@ -39,8 +36,12 @@ def apply_profile(cfg, server_args, server_env, profile, memory_gb=None):
                       l2_total_gb=size * int(server_args['tp-size']) )
     elif l3.get('enabled'):
         raise ValueError('L3 requires the L2 host cache; enable l2 in config/cache.json')
+    server_env = dict(server_env)
+    if ttl.get('enabled'):
+        server_env.update(PYTHONPATH='/compat', QWEN_TTL_KEEP_SECONDS=str(ttl['keep_seconds']))
+        record['ttl_keep_seconds'] = ttl['keep_seconds']
     if not l3.get('enabled'):
-        return server_args, dict(server_env), record
+        return server_args, server_env, record
     # Native raw files omit dtype/layout in their keys, so namespace the storage
     # directory by image, format and the effective arguments.
     identity = {'format': l3['cache_format'], 'image': cfg['image_id'],

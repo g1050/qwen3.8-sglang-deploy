@@ -1,5 +1,5 @@
 {
-  "comment": "L2(主机内存 HiCache)默认开启并按内存自动定容；TTL 与 L3 默认关闭。",
+  "comment": "L2 按内存自动定容；TTL 默认开启（5m/1h）；L3 见 l3.enabled。",
   "l2": {
     "enabled": true,
     "status": "SGLang 原生 HiCache 主机内存层；容量按本机内存自动计算",
@@ -15,8 +15,9 @@
     }
   },
   "ttl": {
-    "enabled": false,
-    "status": "v0.1.0 未移植 kimi3.1 的 TTL 适配层；置为 true 时 deploy.py 拒绝启动"
+    "enabled": true,
+    "status": "v0.2.0-rc1：5m / 1h 两档，默认 5m；适配层为 compat/qwen_ttl",
+    "keep_seconds": 7200
   },
   "l3": {
     "enabled": false,

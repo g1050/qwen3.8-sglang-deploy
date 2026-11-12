@@ -50,7 +50,7 @@ def materialize(profile='service'):
                    SGLANG_SIMULATE_ACC_METHOD=acceptance['method'],
                    SGLANG_SIMULATE_ACC_TOKEN_MODE=acceptance['token_mode'])
     args, env, cache = apply_profile(CFG, args, env, json.loads((ROOT / 'config/cache.json').read_text()))
-    argv = ['python3', '-m', 'sglang.launch_server']
+    argv = ['python3', '/compat/launch.py'] if cache['ttl_enabled'] else ['python3', '-m', 'sglang.launch_server']
     for key, value in args.items():
         if value is True:
             argv.append('--' + key)
@@ -124,6 +124,8 @@ def start(profile):
             '-v', f"{HOST['model_dir']}:/model:ro", '-v', f'{cache}:/cache:rw']
     if profile == 'service':
         args.append('--restart=unless-stopped')
+    if record['cache']['ttl_enabled']:
+        args += ['-v', f"{ROOT / 'compat'}:/compat:ro"]
     for key, value in record['env'].items():
         args += ['-e', f'{key}={value}']
     docker(*args, '--entrypoint=python3', CFG['image_id'], *record['argv'][1:])
