@@ -1,6 +1,6 @@
 # Qwen3.8-27B-FP8 部署管理
 
-**v0.1.0：** 本机 8×RTX 5090 上的 SGLang 0.5.20 服务，模型名 `Qwen3.8-27B-FP8`，端口 8000。默认服务为真实解码，**TTL 与 L3 默认关闭**，保留原生 GPU 前缀缓存。压测使用独立的 `performance` 配置（原生 MTP + 模拟接受率），结果见 [results/README.md](results/README.md)，监控见 [docs/monitoring.md](docs/monitoring.md)。
+**v0.1.0：** 本机 8×RTX 5090 上的 SGLang 0.5.20 服务，模型名 `Qwen3.8-27B-FP8`，端口 8000。默认服务为真实解码，**TTL 与 L3 默认关闭**，L2 主机内存缓存按内存自动定容（本机每 rank 47 GB）。压测使用独立的 `performance` 配置（原生 MTP + 模拟接受率），结果见 [results/README.md](results/README.md)，监控见 [docs/monitoring.md](docs/monitoring.md)。
 
 工程参考 `/data/xkgao/kimi3.1-deploy`：只保存配置、脚本、依赖锁、来源记录和小型结果；模型、镜像、数据集、缓存及完整日志均不入 Git。
 
@@ -17,7 +17,7 @@
 
 ## TTL 与 L3
 
-`config/cache.json` 中 `ttl.enabled` 和 `l3.enabled` 默认均为 `false`，此时启动参数不含任何 `hicache-*` 选项。
+`config/cache.json` 中 `ttl.enabled` 和 `l3.enabled` 默认均为 `false`。`l2.enabled` 默认为 `true`：`hicache-size = floor((MemTotal − reserve_gb) / tp-size)`，本机 reserve 120 GB。
 
 - **L3**：置为 `true` 后渲染 SGLang 原生 `file` 后端参数，存储目录按镜像、格式和有效参数生成哈希命名空间。v0.1.0 只做了渲染和单元测试，未在本机 GPU 上验收。
 - **TTL**：kimi3.1 的 TTL 适配层未移植到本镜像；置为 `true` 时 `deploy.py` 直接拒绝启动。
