@@ -20,7 +20,7 @@ def l2_size_gb(l2, tp_size, memory_gb):
     return size
 
 
-def apply_profile(cfg, server_args, server_env, profile, memory_gb=None):
+def apply_profile(cfg, server_args, server_env, profile, memory_gb=None, disk_bytes=0):
     """Return (args, env, record) with the enabled cache tiers rendered into the server arguments."""
     ttl, l3 = profile['ttl'], profile['l3']
     l2 = profile['l2']
@@ -42,6 +42,8 @@ def apply_profile(cfg, server_args, server_env, profile, memory_gb=None):
         record['ttl_keep_seconds'] = ttl['keep_seconds']
     if not l3.get('enabled'):
         return server_args, server_env, record
+    if not ttl.get('enabled'):
+        raise ValueError('L3 is TTL-gated; enable ttl in config/cache.json')
     # Native raw files omit dtype/layout in their keys, so namespace the storage
     # directory by image, format and the effective arguments.
     identity = {'format': l3['cache_format'], 'image': cfg['image_id'],
@@ -50,12 +52,18 @@ def apply_profile(cfg, server_args, server_env, profile, memory_gb=None):
         identity['args'].pop(key, None)
     digest = hashlib.sha256(json.dumps(identity, sort_keys=True, separators=(',', ':')).encode()).hexdigest()[:24]
     base = '/cache/hicache-l3/' + digest
+    # Endurance budget -> write rate and per-rank quota (design 4.8).
+    daily = l3['endurance_dwpd'] * disk_bytes * l3['disk_share']
+    rate = daily / 86400 / l3['kv_bytes_per_token']
+    quota = int(daily * ttl['keep_seconds'] / 86400 / int(server_args['tp-size']))
+    storage = {**l3['storage'], 'max_size': f'{max(quota // 2 ** 20, 1)}Mi', 'file_storage_path': base + '/blocks'}
     args = {**server_args, **l3['args'],
-            'hicache-storage-backend-extra-config': json.dumps(
-                {**l3['storage'], 'file_storage_path': base + '/blocks'},
-                sort_keys=True, separators=(',', ':'))}
-    env = {**server_env, 'SGLANG_HICACHE_FILE_BACKEND_STORAGE_DIR': base + '/blocks'}
+            'hicache-storage-backend-extra-config': json.dumps(storage, sort_keys=True, separators=(',', ':'))}
+    env = {**server_env, 'SGLANG_HICACHE_FILE_BACKEND_STORAGE_DIR': base + '/blocks',
+           'QWEN_TTL_L3_TOKENS_PER_SECOND': f'{rate:.3f}',
+           'QWEN_TTL_L3_BURST_TOKENS': f'{rate * l3["burst_seconds"]:.0f}'}
     record.update(namespace=digest, container_storage_dir=base + '/blocks',
-                  per_rank_max_size=l3['storage']['max_size'],
+                  per_rank_max_size=storage['max_size'], l3_tokens_per_second=round(rate, 1),
+                  l3_daily_budget_gb=round(daily / 1e9),
                   min_free_space=l3['storage']['min_free_space'])
     return args, env, record

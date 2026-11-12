@@ -5,8 +5,10 @@ carried by each request, and SGLang already delivers the same request list to ev
 """
 from dataclasses import replace
 from functools import wraps
+import heapq
 import logging
 import os
+import time
 
 from qwen_ttl.core import DEFAULT_TTL, LeaseTable, bill, decode_carrier, page_keys, readable_pages
 
@@ -23,6 +25,15 @@ class State:
         self.page_size = int(os.environ.get('QWEN_TTL_BLOCK_TOKENS', '256'))
         self.counters = dict.fromkeys(COUNTERS, 0)
         self.core = None
+        self.cache = None
+        # L3 (file) tier: only valid 1h leases are written, at the L2 eviction tail, within a token budget.
+        self.l3_rate = float(os.environ.get('QWEN_TTL_L3_TOKENS_PER_SECOND', '0'))
+        self.l3_burst = float(os.environ.get('QWEN_TTL_L3_BURST_TOKENS', '0'))
+        self.l3_budget = self.l3_burst
+        self.l3_refilled = 0.0
+        self.l3_writing = False
+        self.last_1h = float('-inf')
+        self.purged = time.monotonic()
 
 
 STATE = State()
@@ -65,12 +76,12 @@ class TTLStrategy:
         tag, now = getattr(node, '_ttl', None), STATE.now
         if tag is None:
             # First seen by an eviction pass shortly after creation: start a default lease clock.
-            tag = node._ttl = (now, now + DEFAULT_TTL)
+            tag = node._ttl = (now, now + DEFAULT_TTL, DEFAULT_TTL)
         rank = 0 if now >= tag[0] + STATE.table.keep else 2 if now < tag[1] else 1
         return rank, self.base.get_priority(node)
 
 
-def tag_path(node_id, now, expires):
+def tag_path(node_id, now, expires, tier):
     """Stamp the tree path a request uses; requests hold node ids, not nodes."""
     core = STATE.core
     if core is None or node_id is None:
@@ -81,7 +92,7 @@ def tag_path(node_id, now, expires):
         return
     while node is not None:
         tag = getattr(node, '_ttl', None)
-        node._ttl = (now, max(expires, tag[1]) if tag else expires)
+        node._ttl = (now, expires, tier) if tag is None or expires >= tag[1] else (now, tag[1], tag[2])
         node = node.parent
 
 
@@ -103,6 +114,81 @@ def reuse_limit(req):
     limit = max(reusable * STATE.page_size, own_prefix(req))
     req._ttl_limit = limit
     return limit
+
+
+def l3_take(tokens):
+    """Token bucket on the request clock, so every rank spends the same budget."""
+    now = STATE.now
+    if STATE.l3_refilled:
+        STATE.l3_budget = min(STATE.l3_burst, STATE.l3_budget + (now - STATE.l3_refilled) * STATE.l3_rate)
+    STATE.l3_refilled = now
+    if tokens > STATE.l3_budget:
+        return False
+    STATE.l3_budget -= tokens
+    return True
+
+
+def backup_tail(core, num_tokens):
+    """Before L2 evicts, persist the valid 1h leaves at its tail. The write pins them past this pass."""
+    now, covered = STATE.now, 0
+    for node in heapq.nsmallest(64, core.evictable_host_leaves, key=core.eviction_strategy.get_priority):
+        if covered >= 2 * num_tokens:
+            break
+        tokens = len(node.key)
+        covered += tokens
+        tag = node._ttl
+        if tag[2] != 3600 or tag[1] - now <= 300 or getattr(node, '_ttl_l3', False):
+            continue
+        if not l3_take(tokens):
+            count('l3_dropped', tokens)
+            continue
+        STATE.l3_writing = True
+        try:
+            STATE.cache.write_backup_storage(node.id)
+        finally:
+            STATE.l3_writing = False
+        node._ttl_l3 = True
+        count('l3_written', tokens)
+
+
+def count(kind, tokens):
+    if METRICS[0] is not None:
+        METRICS[0].tokens.labels(kind).inc(tokens)
+
+
+def purge_storage():
+    """Unlink L3 files idle beyond retention. They are already unreachable through matching."""
+    if time.monotonic() - STATE.purged < 300:
+        return
+    STATE.purged = time.monotonic()
+    evictor = getattr(getattr(getattr(STATE.cache, 'cache_controller', None), 'storage_backend', None), '_evictor', None)
+    if evictor is None or not getattr(evictor, '_eviction_enabled', False):
+        return
+    deadline = time.time() - STATE.table.keep
+    with evictor._lock:
+        for _ in range(4096):
+            stem = next(iter(evictor._lru), None)
+            if stem is None:
+                break
+            try:
+                if os.path.getmtime(os.path.join(evictor.file_path, stem + '.bin')) > deadline:
+                    break
+            except OSError:
+                pass
+            if evictor._evict_one_lru_locked()[0] != 'evicted':
+                break
+
+
+def wants_storage(req):
+    """Only a retained 1h lease can have an L3 copy; everything else skips storage lookups."""
+    rows, keep, now = STATE.table.rows, STATE.table.keep, STATE.now
+    for key in prompt_keys(req):
+        row = rows.get(key)
+        if row is None or now >= row[0] + keep:
+            return False
+        if row[2] == 3600:
+            return True
+    return False
 
 
 def admit(req):
@@ -133,12 +219,15 @@ def admit(req):
     counters['input_tokens'] += usage['input']
     req._ttl_expires = STATE.now + tier
     for node in (getattr(req, 'last_node', None), getattr(req, 'last_host_node', None)):
-        tag_path(node, STATE.now, req._ttl_expires)
+        tag_path(node, STATE.now, req._ttl_expires, tier)
+    req._ttl_tier = tier
+    if tier == 3600:
+        STATE.last_1h = STATE.now
     if METRICS[0] is not None:
         METRICS[0].record(req, usage, physical, idle)
 
 
-def install_classes(cache_class, req_class, batch_class, scheduler_class, streamer_class):
+def install_classes(cache_class, req_class, batch_class, scheduler_class, streamer_class, core_class, base_component):
     if getattr(cache_class, '_qwen_ttl_hook', False):
         return
     original_init = req_class.__init__
@@ -170,6 +259,7 @@ def install_classes(cache_class, req_class, batch_class, scheduler_class, stream
         if not self.disable:
             self.tree_core.eviction_strategy = TTLStrategy(self.tree_core.eviction_strategy)
             STATE.core = self.tree_core
+            STATE.cache = self
         import torch.distributed as dist
         if self.tp_world_size == 1 or dist.get_rank(self.tp_group) == 0:
             try:
@@ -200,6 +290,8 @@ def install_classes(cache_class, req_class, batch_class, scheduler_class, stream
     def prefetch(self, req, storage_hit_end=None):
         if not hasattr(req, '_ttl_seconds'):
             return original_prefetch(self, req, storage_hit_end)
+        if not self.enable_hicache_storage or not wants_storage(req):
+            return None
         reuse_limit(req)
         req._ttl_prefetching = True
         try:
@@ -215,6 +307,8 @@ def install_classes(cache_class, req_class, batch_class, scheduler_class, stream
         for req in first:
             admit(req)
         STATE.counters['swept_rows'] += STATE.table.sweep(STATE.now)
+        if STATE.l3_rate:
+            purge_storage()
         return result
 
     @wraps(original_finished)
@@ -236,8 +330,25 @@ def install_classes(cache_class, req_class, batch_class, scheduler_class, stream
         result = original_unfinished(self, req, *args, **kwargs)
         expires = getattr(req, '_ttl_expires', None)
         if expires is not None and not self.disable:
-            tag_path(getattr(req, 'last_node', None), STATE.now, expires)
+            tag_path(getattr(req, 'last_node', None), STATE.now, expires, req._ttl_tier)
         return result
+
+    original_storage_write = cache_class.write_backup_storage
+
+    @wraps(original_storage_write)
+    def storage_write(self, node_id):
+        # The native policy writes every host backup through to storage; only the TTL tail writer may.
+        if STATE.l3_writing:
+            return original_storage_write(self, node_id)
+
+    original_drive = core_class.drive_host_eviction
+
+    @wraps(original_drive)
+    def drive(self, component_type, num_tokens):
+        if (STATE.l3_rate and self.enable_storage and component_type == base_component
+                and STATE.now - STATE.last_1h < STATE.table.keep):
+            backup_tail(self, num_tokens)
+        return original_drive(self, component_type, num_tokens)
 
     @wraps(original_details)
     def details(self, req):
@@ -253,6 +364,8 @@ def install_classes(cache_class, req_class, batch_class, scheduler_class, stream
     cache_class.match_prefix = match
     cache_class.cache_finished_req = finished
     cache_class.cache_unfinished_req = unfinished
+    cache_class.write_backup_storage = storage_write
+    core_class.drive_host_eviction = drive
     batch_class.prepare_for_extend = extend
     scheduler_class._prefetch_kvcache = prefetch
     streamer_class.get_cached_tokens_details = details
@@ -266,5 +379,7 @@ def install():
     from sglang.srt.mem_cache.unified_radix_cache import UnifiedRadixCache
     streamer = next(value for name, value in vars(output_streamer).items()
                     if isinstance(value, type) and 'get_cached_tokens_details' in vars(value))
-    install_classes(UnifiedRadixCache, Req, ScheduleBatch, Scheduler, streamer)
+    from sglang.srt.mem_cache.unified_cache.component_type import BASE_COMPONENT_TYPE
+    from sglang.srt.mem_cache.unified_cache.unified_tree_core import UnifiedTreeCore
+    install_classes(UnifiedRadixCache, Req, ScheduleBatch, Scheduler, streamer, UnifiedTreeCore, BASE_COMPONENT_TYPE)
     LOG.info('qwen_ttl hooks installed (keep=%ss)', STATE.table.keep)

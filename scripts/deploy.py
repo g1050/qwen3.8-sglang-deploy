@@ -49,7 +49,9 @@ def materialize(profile='service'):
         env.update(SGLANG_SIMULATE_ACC_LEN=str(acceptance['acceptance_length']),
                    SGLANG_SIMULATE_ACC_METHOD=acceptance['method'],
                    SGLANG_SIMULATE_ACC_TOKEN_MODE=acceptance['token_mode'])
-    args, env, cache = apply_profile(CFG, args, env, json.loads((ROOT / 'config/cache.json').read_text()))
+    import shutil
+    disk = shutil.disk_usage(HOST['cache_dir']).total if Path(HOST['cache_dir']).is_dir() else 0
+    args, env, cache = apply_profile(CFG, args, env, json.loads((ROOT / 'config/cache.json').read_text()), disk_bytes=disk)
     argv = ['python3', '/compat/launch.py'] if cache['ttl_enabled'] else ['python3', '-m', 'sglang.launch_server']
     for key, value in args.items():
         if value is True:
