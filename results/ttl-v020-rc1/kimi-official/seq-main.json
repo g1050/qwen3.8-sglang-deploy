@@ -1,0 +1,156 @@
+[
+ {
+  "prefix": "shape",
+  "ext": 700,
+  "note": "extend user on valid default",
+  "wait": 22
+ },
+ {
+  "prefix": "shape",
+  "api": "messages",
+  "note": "messages same prefix",
+  "wait": 22
+ },
+ {
+  "prefix": "shape",
+  "api": "responses",
+  "note": "responses same prefix",
+  "wait": 22
+ },
+ {
+  "prefix": "shape2",
+  "ttl": "10m",
+  "note": "invalid ttl",
+  "wait": 22
+ },
+ {
+  "prefix": "g100",
+  "words": 100,
+  "note": "granularity",
+  "wait": 22
+ },
+ {
+  "prefix": "g100",
+  "words": 100,
+  "note": "granularity repeat",
+  "wait": 22
+ },
+ {
+  "prefix": "g400",
+  "words": 400,
+  "note": "granularity",
+  "wait": 22
+ },
+ {
+  "prefix": "g400",
+  "words": 400,
+  "note": "granularity repeat",
+  "wait": 22
+ },
+ {
+  "prefix": "g1500",
+  "words": 1500,
+  "note": "granularity",
+  "wait": 22
+ },
+ {
+  "prefix": "g1500",
+  "words": 1500,
+  "note": "granularity repeat",
+  "wait": 22
+ },
+ {
+  "prefix": "B",
+  "ttl": "1h",
+  "note": "1h first write",
+  "wait": 22
+ },
+ {
+  "prefix": "B",
+  "ttl": "5m",
+  "note": "5m on valid 1h",
+  "wait": 22
+ },
+ {
+  "prefix": "B",
+  "ttl": "5m",
+  "ext": 700,
+  "note": "5m extend on valid 1h",
+  "wait": 22
+ },
+ {
+  "prefix": "C",
+  "ttl": "5m",
+  "note": "5m first write",
+  "wait": 22
+ },
+ {
+  "prefix": "C",
+  "ttl": "1h",
+  "note": "1h on valid 5m",
+  "wait": 22
+ },
+ {
+  "prefix": "C",
+  "ttl": "1h",
+  "ext": 700,
+  "note": "1h extend on valid 5m",
+  "wait": 22
+ },
+ {
+  "prefix": "C",
+  "mutate": "mid",
+  "note": "mutate middle",
+  "wait": 22
+ },
+ {
+  "prefix": "C",
+  "wait": 352,
+  "ttl": "1h",
+  "note": "C after 330s idle with 1h: locked-5m chain expired?"
+ },
+ {
+  "prefix": "C",
+  "ttl": "1h",
+  "note": "C repeat",
+  "wait": 22
+ },
+ {
+  "prefix": "M",
+  "api": "messages",
+  "ttl": "1h",
+  "note": "messages 1h write",
+  "wait": 22
+ },
+ {
+  "prefix": "M",
+  "api": "messages",
+  "note": "messages default on valid 1h",
+  "wait": 22
+ },
+ {
+  "prefix": "E5",
+  "note": "5m write",
+  "wait": 22
+ },
+ {
+  "prefix": "E5",
+  "wait": 292,
+  "note": "E5 +270s hit and renew"
+ },
+ {
+  "prefix": "E5",
+  "wait": 292,
+  "note": "E5 +270s after renew: hit"
+ },
+ {
+  "prefix": "E5",
+  "wait": 352,
+  "note": "E5 +330s idle: miss"
+ },
+ {
+  "prefix": "E5",
+  "note": "E5 repeat after rewrite",
+  "wait": 22
+ }
+]

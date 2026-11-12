@@ -1,0 +1,32 @@
+[
+ {
+  "prefix": "H",
+  "ttl": "1h",
+  "wait": 5,
+  "note": "1h write"
+ },
+ {
+  "prefix": "H",
+  "ttl": "1h",
+  "wait": 400,
+  "note": "H +400s: hit beyond 5m"
+ },
+ {
+  "prefix": "H",
+  "ttl": "5m",
+  "wait": 3400,
+  "note": "H +3400s with 5m request: hit, renews as 1h?"
+ },
+ {
+  "prefix": "H",
+  "ttl": "1h",
+  "wait": 3400,
+  "note": "H +3400s again: hit only if previous renewed at 1h"
+ },
+ {
+  "prefix": "H",
+  "ttl": "1h",
+  "wait": 3700,
+  "note": "H +3700s idle: miss"
+ }
+]
