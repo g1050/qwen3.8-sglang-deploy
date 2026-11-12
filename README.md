@@ -1,5 +1,7 @@
 # Qwen3.8-27B-FP8 部署管理
 
+**v0.2.0-rc1：** 在 v0.1.0 基础上增加 Prompt Cache TTL（5m / 1h，默认 5m，字段与 Kimi 官方端点对照校准）和按 TTL 门控的 L3，默认全部开启；8 并发性能与 v0.1.0 baseline 持平（−0.6% / −1.0%）。说明见 [docs/ttl-v020.md](docs/ttl-v020.md)，结果见 [results/README.md](results/README.md)。
+
 **v0.1.0：** 本机 8×RTX 5090 上的 SGLang 0.5.20 服务，模型名 `Qwen3.8-27B-FP8`，端口 8000。默认服务为真实解码，**TTL 与 L3 默认关闭**，L2 主机内存缓存按内存自动定容（本机每 rank 47 GB）。压测使用独立的 `performance` 配置（原生 MTP + 模拟接受率），结果见 [results/README.md](results/README.md)，监控见 [docs/monitoring.md](docs/monitoring.md)。
 
 工程参考 `/data/xkgao/kimi3.1-deploy`：只保存配置、脚本、依赖锁、来源记录和小型结果；模型、镜像、数据集、缓存及完整日志均不入 Git。
@@ -15,12 +17,9 @@
 
 模拟接受率用于排除真实接受率波动对性能的影响：`SGLANG_SIMULATE_ACC_LEN=2.32`、`match-expected`、`real-draft-token`。InferenceX 没有 Qwen3.8-27B 的黄金曲线，按用户选择取 `qwen3.8-flash-next-fp8` MTP 曲线 thinking_on 3 步的值。模拟输出不作为模型正确性结果。
 
-## TTL 与 L3
+## 缓存分层
 
-`config/cache.json` 中 `ttl.enabled` 和 `l3.enabled` 默认均为 `false`。`l2.enabled` 默认为 `true`：`hicache-size = floor((MemTotal − reserve_gb) / tp-size)`，本机 reserve 120 GB。
-
-- **L3**：置为 `true` 后渲染 SGLang 原生 `file` 后端参数，存储目录按镜像、格式和有效参数生成哈希命名空间。v0.1.0 只做了渲染和单元测试，未在本机 GPU 上验收。
-- **TTL**：kimi3.1 的 TTL 适配层未移植到本镜像；置为 `true` 时 `deploy.py` 直接拒绝启动。
+`config/cache.json` 默认：L2 按内存自动定容（本机每 rank 47 GB）；TTL 开启（5m / 1h，留存上限 2 小时）；L3 开启，只接收租约有效的 1h 档，配额和写入速率按磁盘寿命预算计算（本机每 rank 约 19 GB、159 token/s）。关闭 TTL 需同时关闭 L3。详见 [docs/ttl-v020.md](docs/ttl-v020.md)。
 
 ## 在本机操作
 

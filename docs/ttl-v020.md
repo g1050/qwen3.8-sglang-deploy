@@ -40,9 +40,9 @@
 | 4.4 续约与写入 | 请求首个 prefill 批次时一次完成：命中块按锁定档位续约，其余 prompt 块建立租约。生成的输出块只登记为"可复用、不计费" |
 | 4.5 用量 | 调度器把账单放进 `cached_tokens_details` 带到 HTTP 进程，中间件改写 JSON / SSE 的 usage 并加响应头 |
 | 4.6 淘汰 | `TTLStrategy` 包住原生策略：超留存上限最先，其次已过期，其余按原生顺序。L1、L2 共用（已确认 `components/full.py` 的主机侧淘汰用同一策略对象） |
-| 4.7 L3 | 关闭原生"每次主机备份都写盘"；L2 淘汰前把队尾的"1h 档、租约剩余 > 5 分钟、未写盘"叶子写入 L3（写入期间节点被锁，本轮淘汰跳过它）；令牌桶限速。只有带 1h 租约的请求才做 L3 预取，5m 流量完全不碰 L3 |
+| 4.7 L3 | 关闭原生"每次主机备份都写盘"。L2 淘汰需求每累计 3.2 万 token 扫描一次队尾，把其中"1h 档、租约剩余 > 5 分钟、未写盘"的叶子写入 L3（写入期间节点被锁，淘汰会跳过它），令牌桶限速。只有内存匹配点之后紧接的块**确实写进过 L3 且仍在留存期内**才查盘，查不到不重试；5m 流量完全不碰 L3 |
 | 4.8 留存与预算 | `T_keep` 7200 秒。每日写入预算 = DWPD 1 × 盘容量 × 份额 0.5；速率上限和每 rank 配额由 `scripts/cache_profile.py` 按公式算出。超过留存的 L3 文件每 5 分钟清理 |
-| 4.10 指标 | `qwen_ttl_tokens_total{kind}`（read / write_5m / write_1h / input / physical / expired_reuse / unbacked_read / l3_written / l3_dropped）、`qwen_ttl_requests_total{tier}`、`qwen_ttl_idle_seconds{kind}`、`qwen_ttl_lease_rows` |
+| 4.10 指标 | `qwen_ttl_tokens_total{kind}`（read / write_5m / write_1h / input / physical / expired_reuse / unbacked_read / l3_written / l3_dropped / l3_lookup）、`qwen_ttl_overhead_seconds_total{part}`（match / admit / storage_gate / tail_scan）、`qwen_ttl_requests_total{tier}`、`qwen_ttl_idle_seconds{kind}`、`qwen_ttl_lease_rows` |
 
 ## 与设计稿的差异
 
@@ -50,6 +50,24 @@
 - **L1/L2 没有主动清除**。超过留存上限的数据匹配不到、淘汰时排最前，但不会被定时释放；L3 文件有定时清除。
 - **L3 文件清除按写入时间**（mtime）而非最后使用时间判断，只影响何时删盘，不影响能否被复用。
 - **n > 1 或批量请求**的账单取第一个 choice。
+
+## 性能与 L3 调优记录
+
+结果见 [results/README.md](../results/README.md)。1h 档前两次压测不合格，原因和修正：
+
+| 迭代 | 输出吞吐 vs baseline | 原因 | 修正 |
+|---|---:|---|---|
+| 1 | −24% | 每个 1h 请求都查 L3，查不到重试 8 次，请求卡在调度前；结束后空闲检查报 GPU KV 池账目不一致，调度器退出 | 查盘改为按"实际写入过 L3 的块"精确门控，重试上限 1 |
+| 2 | −9.4% | 每次 L2 淘汰都扫描并写入队尾，写入量 55 万 token，引擎写盘线程持续占用调度器进程 | 队尾扫描按淘汰需求摊销；写入预算突发量从 1 小时降到 10 分钟 |
+| 3 | −1.0% | — | 采用 |
+
+TTL 记账（匹配、计费、查盘门控、队尾扫描）在 8 并发一小时里合计占调度器约 3.2 秒。
+
+未解决：迭代 1 结束时出现的 `pool memory leak detected`（GPU KV 池 available + evictable 比 total 多 3264 token）没有找到根因；迭代 2、3 和 L3 压力场景中没有再出现。它出现在大量 L3 查盘并发、客户端取消在途请求之后，现在的门控使这条路径很少被走到，但不能证明已消除。
+
+L3 在本机这个负载下收益很小：一小时写入 21 万 token，读回约 1 万 token。按设计 2.7 的容量模型，L2 周转时间约 50 分钟，接近 1 小时，被挤到队尾的条目大多只剩几分钟租约。负载更高、L2 周转更短的部署才会明显受益。
+
+`scripts/ttl/l3_stress.py` 用小 L2 在几分钟内逼出 L3 写入和回读，用来回归 L3 改动（`QWEN_L2_SIZE_GB=6`，结果在 `results/ttl-v020-rc1/l3-stress/`）。
 
 ## 运行与验收
 
@@ -60,6 +78,8 @@ python3 scripts/ttl/acceptance.py --output runtime/acceptance.json
 python3 scripts/ttl/kimi_probe.py --help                    # 官方端点 / 本机对照序列
 ```
 
-`QWEN_TTL_TEST_CLOCK` 只在验收时设置；正式服务不设，时间戳取 HTTP 进程的系统时间。
+`QWEN_TTL_TEST_CLOCK` 只在验收时设置；正式服务不设，时间戳取 HTTP 进程的系统时间。`QWEN_TTL_DEFAULT_SECONDS=3600` 仅供压测使用（AgentX 客户端不带缓存选项，用它让全部请求走 1h）。
+
+验收结果：正式配置和 MTP 压测配置各 51 项全部通过（`results/ttl-v020-rc1/acceptance-*.json`）。
 
 限制沿用设计 4.9：`pp_size` 必须为 1；不支持与显式引擎会话、PD 模式组合。
