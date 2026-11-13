@@ -81,13 +81,15 @@ def main():
     parser.add_argument('--replay', type=int, default=10)
     parser.add_argument('--concurrency', type=int, default=4)
     parser.add_argument('--max-tokens', type=int, default=120)
+    parser.add_argument('--settle', type=float, default=180)
     parser.add_argument('--output', type=Path)
     args = parser.parse_args()
     run = f'{time.time():.0f}'
     prefixes = [f'stress {run} {i}. ' + filler(int(run) + i, args.words) for i in range(args.prefixes)]
     half = args.prefixes // 2
-    out = [phase('fill-early', args, prefixes[:half // 2], 2), phase('fill-evicting', args, prefixes[half // 2:], 2),
-           phase('replay-oldest', args, prefixes[:args.replay], 1)]
+    out = [phase('fill-early', args, prefixes[:half // 2], 2), phase('fill-evicting', args, prefixes[half // 2:], 2)]
+    time.sleep(args.settle)      # L3 writes are asynchronous; let them drain before reading back
+    out.append(phase('replay-oldest', args, prefixes[:args.replay], 1))
     if args.output:
         args.output.write_text(json.dumps(out, indent=1, ensure_ascii=False) + '\n')
 

@@ -1,0 +1,55 @@
+[
+ {
+  "phase": "fill-early",
+  "requests": 30,
+  "seconds": 100.9,
+  "itl_ms_mean": 86.1,
+  "itl_ms_p90": 157.5,
+  "ttft_s_mean": 2.5,
+  "billed_read": 230400,
+  "delta": {
+   "engine_input": 265002,
+   "engine_device_hit": 201408,
+   "input": 5610,
+   "write_1h": 230400,
+   "read": 230400,
+   "physical": 201408,
+   "unbacked_read": 28992
+  }
+ },
+ {
+  "phase": "fill-evicting",
+  "requests": 90,
+  "seconds": 269.1,
+  "itl_ms_mean": 73.5,
+  "itl_ms_p90": 95.7,
+  "ttft_s_mean": 2.52,
+  "billed_read": 691456,
+  "delta": {
+   "engine_input": 792408,
+   "engine_device_hit": 606912,
+   "input": 16408,
+   "write_1h": 691456,
+   "read": 691456,
+   "physical": 606912,
+   "unbacked_read": 84544,
+   "l3_written": 7040
+  }
+ },
+ {
+  "phase": "replay-oldest",
+  "requests": 10,
+  "seconds": 39.3,
+  "itl_ms_mean": 81.3,
+  "itl_ms_p90": 101.8,
+  "ttft_s_mean": 3.81,
+  "billed_read": 153600,
+  "delta": {
+   "engine_input": 155450,
+   "input": 1850,
+   "read": 153600,
+   "unbacked_read": 153600,
+   "l3_lookup": 1
+  }
+ }
+]

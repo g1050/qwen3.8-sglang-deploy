@@ -25,7 +25,7 @@
     "cache_format": "qwen38-v020-file-v1",
     "args": {
       "hicache-storage-backend": "file",
-      "hicache-storage-prefetch-policy": "timeout",
+      "hicache-storage-prefetch-policy": "wait_complete",
       "hicache-storage-prefetch-retry-max-attempts": 1
     },
     "storage": {

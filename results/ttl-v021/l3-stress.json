@@ -1,0 +1,60 @@
+[
+ {
+  "phase": "fill-early",
+  "requests": 80,
+  "seconds": 234.2,
+  "itl_ms_mean": 77.2,
+  "itl_ms_p90": 98.9,
+  "ttft_s_mean": 2.52,
+  "billed_read": 614400,
+  "delta": {
+   "engine_input": 703374,
+   "engine_device_hit": 540096,
+   "input": 14670,
+   "write_1h": 614400,
+   "read": 614400,
+   "physical": 540096,
+   "unbacked_read": 74304
+  }
+ },
+ {
+  "phase": "fill-evicting",
+  "requests": 240,
+  "seconds": 684.1,
+  "itl_ms_mean": 74.4,
+  "itl_ms_p90": 97.2,
+  "ttft_s_mean": 2.54,
+  "billed_read": 1843456,
+  "delta": {
+   "engine_input": 2109774,
+   "engine_device_hit": 1620672,
+   "input": 43534,
+   "write_1h": 1843456,
+   "read": 1843456,
+   "physical": 1620672,
+   "unbacked_read": 222784,
+   "l3_written": 98112,
+   "l3_dropped": 1063872
+  }
+ },
+ {
+  "phase": "replay-oldest",
+  "requests": 10,
+  "seconds": 35.4,
+  "itl_ms_mean": 75.3,
+  "itl_ms_p90": 99.2,
+  "ttft_s_mean": 3.0,
+  "billed_read": 153600,
+  "delta": {
+   "engine_input": 91681,
+   "engine_storage_hit": 63808,
+   "input": 1889,
+   "read": 153600,
+   "physical": 63808,
+   "unbacked_read": 89792,
+   "l3_written": 10560,
+   "l3_dropped": 136320,
+   "l3_lookup": 5
+  }
+ }
+]

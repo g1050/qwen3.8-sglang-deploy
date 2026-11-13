@@ -39,7 +39,9 @@ class State:
         self.l3_refilled = 0.0
         self.l3_writing = False
         self.tail_demand = 0
-        self.l3_keys = set()
+        self.l3_pages = {}          # engine page hash on L3 -> id of the node whose write covers it
+        self.l3_state_pages = set()  # page hashes stored together with a state (restore points)
+        self.key_class = self.page_hashes = None
         self.last_1h = float('-inf')
         self.purged = time.monotonic()
 
@@ -204,27 +206,91 @@ def backup_tail(core, num_tokens):
     for node in heapq.nsmallest(256, core.evictable_host_leaves, key=core.eviction_strategy.get_priority):
         if covered >= TAIL_WINDOW:
             break
-        covered += len(node.key)
-        write_tail_node(node)
+        covered += write_chain(node, core.root_node)
     spend('tail_scan', started)
 
 
-def write_tail_node(node):
-    """Write one host leaf to L3 if it holds a valid 1h lease and the budget allows."""
-    tag, tokens = getattr(node, '_ttl', None), len(node.key)
-    if tag is None or tag[2] != 3600 or tag[1] - STATE.now <= 300 or getattr(node, '_ttl_l3', False):
-        return
-    if not l3_take(tokens):
-        count('l3_dropped', tokens)
-        return
-    STATE.l3_writing = True
-    try:
-        STATE.cache.write_backup_storage(node.id)
-    finally:
-        STATE.l3_writing = False
-    node._ttl_l3 = True
-    remember_storage(node)
-    count('l3_written', tokens)
+def writable(node):
+    """A host node worth persisting: valid 1h lease with time left, and a host copy to read from."""
+    tag = getattr(node, '_ttl', None)
+    return tag is not None and tag[2] == 3600 and tag[1] - STATE.now > 300 and node.backuped
+
+
+def eviction_chain(leaf, root):
+    """The leaf plus the ancestors eviction reaches right after it, shallowest first.
+
+    Host eviction cascades: once a leaf is gone its single-child parent is the next leaf, inside
+    the same pass, so a scan of the current leaves alone never sees the prompt nodes above them.
+    """
+    chain, node = [], leaf
+    while node is not None and node is not root:
+        chain.append(node)
+        parent = node.parent
+        if parent is None or len(parent.children) != 1:
+            break
+        node = parent
+    chain.reverse()
+    return chain
+
+
+def write_chain(leaf, root):
+    """Persist a leaf's eviction chain as one unit, or not at all.
+
+    L3 is read as a hash chain from the L2 match point and (with a state layer) can only
+    resume on a page stored with its state. A partly written chain is unreadable, so decide
+    first: the longest writable run from the top that ends on a node with host state, and
+    only if the budget covers all of it.
+    """
+    chain = eviction_chain(leaf, root)
+    run = []
+    for node in chain:
+        if not getattr(node, '_ttl_l3', False) and not writable(node):
+            break
+        run.append(node)
+    if not run and chain:
+        # Why nothing of this chain can go to L3 (tokens of the whole chain).
+        top, tag = chain[0], getattr(chain[0], '_ttl', None)
+        reason = ('l3_skipped_5m' if tag is None or tag[2] != 3600 else
+                  'l3_skipped_expiring' if tag[1] - STATE.now <= 300 else 'l3_skipped_no_host_copy')
+        count(reason, sum(len(node.key) for node in chain))
+    run = run[:restorable(run)]
+    pending = [node for node in run if not getattr(node, '_ttl_l3', False)]
+    tokens = sum(len(node.key) for node in pending)
+    if DEBUG and METRICS[0] is not None:
+        LOG.warning('qwen_ttl l3 chain leaf=%s chain=%s run=%s pending=%s tokens=%d budget=%d', leaf.id,
+                    [len(n.key) for n in chain], len(run), len(pending), tokens, STATE.l3_budget)
+    if pending:
+        if l3_take(tokens):
+            STATE.l3_writing = True
+            try:
+                for node in pending:
+                    STATE.cache.write_backup_storage(node.id)
+                    node._ttl_l3 = True
+                    remember_storage(node)
+            finally:
+                STATE.l3_writing = False
+            count('l3_written', tokens)
+        else:
+            count('l3_dropped', tokens)
+    return sum(len(node.key) for node in chain)
+
+
+def restorable(chain):
+    """How many leading chain nodes are worth writing.
+
+    A model with a state layer can only resume from L3 at a page whose state was stored with
+    it: the engine discards a fetched run that ends on a page without one. So the written
+    chain must end on a node that still has its host state; anything below that is useless.
+    """
+    ct = STATE.state_component
+    if ct is None:
+        return len(chain)
+    for index in range(len(chain) - 1, -1, -1):
+        if chain[index].component_data[ct].host_value is not None:
+            return index + 1
+    if chain:
+        count('l3_skipped_stateless', sum(len(node.key) for node in chain))
+    return 0
 
 
 def spend(part, started):
@@ -260,31 +326,67 @@ def purge_storage():
                 break
 
 
+DEBUG = os.environ.get('QWEN_TTL_DEBUG') == '1'
+L3_PAGE_LIMIT = 4_000_000     # remembered L3 pages; the oldest are forgotten first
+
+
 def remember_storage(node):
-    """Record the lease blocks of a path whose tail was just written to L3."""
-    parts = []
-    walk = node
-    while walk is not None and walk.key is not None:
-        parts.append(walk.key.raw_token_ids())
-        walk = walk.parent
-    tokens = array('q')
-    for part in reversed(parts):
-        tokens.extend(part)
-    keys = page_keys(tokens, STATE.page_size, node.key.cache_salt, node.key.extra_key)
-    start = (len(tokens) - len(node.key)) // STATE.page_size
-    STATE.l3_keys.update(keys[start:])
+    """Record exactly which engine pages a node's L3 write puts on disk, and where a state is."""
+    pages = STATE.l3_pages
+    for page_hash in node.hash_value:
+        pages[page_hash] = node.id
+    ct = STATE.state_component
+    if ct is None or node.component_data[ct].host_value is not None:
+        STATE.l3_state_pages.add(node.hash_value[-1])
+    while len(pages) > L3_PAGE_LIMIT:
+        STATE.l3_state_pages.discard(next(iter(pages)))
+        del pages[next(iter(pages))]
 
 
-def storage_candidate(req, matched):
-    """Whether the block right after the L1+L2 match was written to L3 under a retained lease."""
-    keys = prompt_keys(req)
-    index = matched // STATE.page_size
-    known = STATE.l3_keys
-    for key in keys[index:index + 2]:
-        if key in known:
-            row = STATE.table.rows.get(key)
-            return row is not None and STATE.now < row[0] + STATE.table.keep
-    return False
+def storage_end(cache, req, matched, limit):
+    """Absolute token end of what L3 can restore right after the L1+L2 match, or None.
+
+    The engine fetches a hash chain of pages and, with a state layer, keeps it only if the
+    last page was stored with its state. So: the run of consecutive pages known to be on
+    disk (and fully written), cut back to the deepest page that has a state.
+    """
+    pages = STATE.l3_pages
+    if not pages:
+        return None
+    engine_page = cache.page_size
+    tokens = req.full_untruncated_fill_ids
+    end = min(limit, req._compute_max_prefix_len(len(tokens))) // engine_page * engine_page
+    if matched % engine_page or end - matched < engine_page:
+        return None
+    prior = cache.get_last_hash_value(req.last_host_node)
+    key = STATE.key_class(tokens[matched:matched + engine_page], req.extra_key, cache_salt=req.cache_salt)
+    first = STATE.page_hashes(key, prior, page_size=engine_page)
+    if not first or first[0] not in pages:
+        return None                     # the common case: one page hashed, nothing on disk
+    key = STATE.key_class(tokens[matched:end], req.extra_key, cache_salt=req.cache_salt)
+    writing = {entry[0] for entry in cache.ongoing_backup.values()}
+    # The fetched run is staged in L2 first. If L2 cannot hold all of it the engine keeps a
+    # shorter prefix, which ends off a state page and is thrown away. Make room up front and
+    # never ask for more than L2 can take.
+    host_pool = cache.cache_controller.mem_pool_host
+    room = host_pool.available_size()
+    if room < end - matched:
+        cache.evict_host(end - matched - room)
+        room = host_pool.available_size()
+    best = last = None
+    index, why = 0, 'end'
+    for index, page_hash in enumerate(STATE.page_hashes(key, prior, page_size=engine_page)):
+        node_id = pages.get(page_hash)
+        if node_id is None or node_id in writing or (index + 1) * engine_page > room:
+            why = 'missing' if node_id is None else 'writing' if node_id in writing else 'room'
+            break
+        if page_hash in STATE.l3_state_pages:
+            best = matched + (index + 1) * engine_page
+            last = page_hash
+    if DEBUG and METRICS[0] is not None:
+        LOG.warning('qwen_ttl l3 lookup rid=%s matched=%d end=%s want=%d run_pages=%d stop=%s room=%d state_page=%s', req.rid,
+                    matched, best, end, index, why, room, last[:12] if best else None)
+    return best
 
 
 def admit(req):
@@ -399,14 +501,15 @@ def install_classes(cache_class, req_class, batch_class, scheduler_class, stream
         started = time.perf_counter()
         req.init_next_round_input(self.tree_cache, cow_mamba=False)
         matched = len(req.prefix_indices) + req.host_hit_length
+        hit_end = storage_end(self.tree_cache, req, matched, req._ttl_limit)
         spend('storage_gate', started)
-        if not storage_candidate(req, matched):
+        if hit_end is None:
             req.storage_prefetch_last_match_len = matched
             return None
         count('l3_lookup', 1)
         req._ttl_prefetching = True
         try:
-            return original_prefetch(self, req, storage_hit_end)
+            return original_prefetch(self, req, hit_end)
         finally:
             req._ttl_prefetching = False
 
@@ -420,9 +523,7 @@ def install_classes(cache_class, req_class, batch_class, scheduler_class, stream
             for req in first:
                 admit(req)
             spend('admit', started)
-        swept = STATE.table.sweep(STATE.now)
-        if swept and STATE.l3_keys:
-            STATE.l3_keys.intersection_update(STATE.table.rows)
+        STATE.table.sweep(STATE.now)
         if STATE.l3_rate:
             purge_storage()
         return result
@@ -475,8 +576,9 @@ def install_classes(cache_class, req_class, batch_class, scheduler_class, stream
                     if reach >= 2 * num_tokens:
                         break
                     reach += 1
-                    if node in self.evictable_host_leaves:
-                        write_tail_node(node)
+                    # A node about to lose its host state is a restore point: persist the path
+                    # ending on it, whether or not it is a leaf (prompt checkpoints are internal).
+                    write_chain(node, self.root_node)
             spend('state_tail', started)
         return original_drive(self, component_type, num_tokens)
 
@@ -553,6 +655,9 @@ def install():
     from sglang.srt.mem_cache.unified_cache.components.full import FullComponent
     from sglang.srt.mem_cache.unified_cache.components.mamba import MambaComponent
     from sglang.srt.mem_cache.hicache_storage import PoolName
+    from sglang.srt.mem_cache.radix_cache import RadixKey
+    from sglang.srt.mem_cache.utils import get_storage_hash_str
+    STATE.key_class, STATE.page_hashes = RadixKey, get_storage_hash_str
     install_classes(UnifiedRadixCache, Req, ScheduleBatch, Scheduler, streamer, UnifiedTreeCore, BASE_COMPONENT_TYPE,
                     MambaComponent, ComponentType.MAMBA, PoolName.MAMBA, FullComponent)
     LOG.info('qwen_ttl hooks installed (keep=%ss)', STATE.table.keep)

@@ -1,0 +1,43 @@
+{
+  "comment": "诊断用：仅 L2，无 TTL、无 L3（等同 v0.1.0 的缓存配置）",
+  "l2": {
+    "enabled": true,
+    "status": "SGLang 原生 HiCache 主机内存层；容量按本机内存自动计算",
+    "hicache_size_gb": null,
+    "reserve_gb": 120,
+    "sizing": "hicache-size = floor((MemTotal - reserve_gb) / tp-size)，为每个 rank 的主机缓存总量（引擎在其中划分 KV 池与 Mamba 状态池）。reserve_gb 留给 8 个 rank 进程、压测客户端、系统与页缓存。",
+    "args": {
+      "page-size": 64,
+      "enable-hierarchical-cache": true,
+      "hicache-io-backend": "kernel",
+      "hicache-mem-layout": "page_first",
+      "hicache-write-policy": "write_through_selective"
+    }
+  },
+  "ttl": {
+    "enabled": false,
+    "status": "v0.2.0：5m / 1h 两档，默认 5m；适配层为 compat/qwen_ttl",
+    "keep_seconds": 7200
+  },
+  "l3": {
+    "enabled": false,
+    "status": "v0.2.0：仅写入租约有效的 1h 档，L2 淘汰队尾触发，受写入预算限制",
+    "cache_format": "qwen38-v020-file-v1",
+    "args": {
+      "hicache-storage-backend": "file",
+      "hicache-storage-prefetch-policy": "timeout",
+      "hicache-storage-prefetch-retry-max-attempts": 1
+    },
+    "storage": {
+      "min_free_space": "1Ti",
+      "eviction_ratio": 0.9,
+      "enable_metadata_cache": true,
+      "metadata_ttl": -1
+    },
+    "endurance_dwpd": 1,
+    "disk_share": 0.5,
+    "kv_bytes_per_token": 200000,
+    "burst_seconds": 600,
+    "sizing": "每日写入预算 = endurance_dwpd × 磁盘容量 × disk_share；写入速率上限(token/s) = 预算 / 86400 / kv_bytes_per_token；每 rank 配额 = 预算 × keep_seconds / 86400 / tp-size。kv_bytes_per_token 为 8 个 rank 合计在 L3 上的实测值（170–240 KB，含状态层）。"
+  }
+}

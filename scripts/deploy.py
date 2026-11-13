@@ -8,6 +8,7 @@ Profiles:
 import argparse
 import hashlib
 import json
+import os
 from pathlib import Path
 import shlex
 import subprocess
@@ -51,7 +52,7 @@ def materialize(profile='service'):
                    SGLANG_SIMULATE_ACC_TOKEN_MODE=acceptance['token_mode'])
     import shutil
     disk = shutil.disk_usage(HOST['cache_dir']).total if Path(HOST['cache_dir']).is_dir() else 0
-    args, env, cache = apply_profile(CFG, args, env, json.loads((ROOT / 'config/cache.json').read_text()), disk_bytes=disk)
+    args, env, cache = apply_profile(CFG, args, env, json.loads(Path(os.environ.get('QWEN_CACHE_CONFIG') or ROOT / 'config/cache.json').read_text()), disk_bytes=disk)
     argv = ['python3', '/compat/launch.py'] if cache['ttl_enabled'] else ['python3', '-m', 'sglang.launch_server']
     for key, value in args.items():
         if value is True:

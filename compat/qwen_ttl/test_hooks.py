@@ -82,5 +82,55 @@ class ReorderTail(unittest.TestCase):
         self.assertEqual(lru.eviction_order(), ['v1', 'e1'])
 
 
+class Tree:
+    def __init__(self, name, parent=None):
+        self.name, self.parent, self.children = name, parent, {}
+        if parent is not None:
+            parent.children[name] = self
+
+
+class EvictionChain(unittest.TestCase):
+    def test_single_child_ancestors_follow_the_leaf(self):
+        root = Tree('root')
+        prompt = Tree('prompt', root)
+        turn = Tree('turn', prompt)
+        tail = Tree('tail', turn)
+        self.assertEqual([n.name for n in hooks.eviction_chain(tail, root)], ['prompt', 'turn', 'tail'])
+
+    def test_stops_below_a_branching_ancestor(self):
+        root = Tree('root')
+        shared = Tree('shared', root)
+        a, _ = Tree('a', shared), Tree('b', shared)
+        leaf = Tree('leaf', a)
+        self.assertEqual([n.name for n in hooks.eviction_chain(leaf, root)], ['a', 'leaf'])
+
+
+class Data:
+    def __init__(self, host_value):
+        self.host_value = host_value
+
+
+class Restorable(unittest.TestCase):
+    def chain(self, states):
+        nodes = []
+        for has_state in states:
+            node = Tree(str(len(nodes)))
+            node.key, node.component_data = [0] * 64, {7: Data(object() if has_state else None)}
+            nodes.append(node)
+        return nodes
+
+    def tearDown(self):
+        hooks.STATE.state_component = None
+
+    def test_chain_must_end_on_a_node_with_state(self):
+        hooks.STATE.state_component = 7
+        self.assertEqual(hooks.restorable(self.chain([False, True, False])), 2)
+        self.assertEqual(hooks.restorable(self.chain([True, True])), 2)
+        self.assertEqual(hooks.restorable(self.chain([False, False])), 0)
+
+    def test_stateless_models_write_everything(self):
+        self.assertEqual(hooks.restorable(self.chain([False, False])), 2)
+
+
 if __name__ == '__main__':
     unittest.main()
