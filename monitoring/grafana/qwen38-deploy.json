@@ -40,7 +40,7 @@
      "showLineNumbers": false,
      "showMiniMap": false
     },
-    "content": "## Qwen3.8-27B-FP8 · 本机 8×RTX 5090\n**SGLang 0.5.20 · TP8 · 原生 GPU 前缀缓存 · TTL / L3 默认关闭**　|　服务 `:8000`　|　采样 15 秒，页面刷新 5 秒  \n业务空闲时延迟/命中率可能无样本；HTTP 统计来自引擎。压测期间端口由模拟接受率的 MTP 容器提供，投机解码面板随之出现数据。",
+    "content": "## Qwen3.8-27B-FP8 · 本机 8×RTX 5090\n**SGLang 0.5.20 · TP8 · L1 GPU / L2 主机内存 / L3 NVMe · TTL 5m / 1h**　|　服务 `:8000`　|　采样 15 秒，页面刷新 5 秒  \n业务空闲时延迟/命中率可能无样本；HTTP 统计来自引擎。压测期间端口由模拟接受率的 MTP 容器提供，投机解码面板随之出现数据。",
     "mode": "markdown"
    },
    "pluginVersion": "11.6.0",
@@ -655,6 +655,1616 @@
     "y": 10
    },
    "id": 11,
+   "title": "TTL · 计费命中 vs 实际命中",
+   "type": "row",
+   "description": ""
+  },
+  {
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "description": "返回给用户的口径：租约有效的块占输入 token 的比例。",
+   "fieldConfig": {
+    "defaults": {
+     "color": {
+      "mode": "thresholds"
+     },
+     "decimals": 0,
+     "mappings": [],
+     "noValue": "无样本 / 无数据",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green"
+       }
+      ]
+     },
+     "unit": "percentunit"
+    },
+    "overrides": []
+   },
+   "gridPos": {
+    "h": 5,
+    "w": 4,
+    "x": 0,
+    "y": 11
+   },
+   "id": 12,
+   "interval": "2s",
+   "maxDataPoints": 600,
+   "options": {
+    "colorMode": "value",
+    "graphMode": "none",
+    "justifyMode": "auto",
+    "orientation": "auto",
+    "percentChangeColorMode": "standard",
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "showPercentChange": false,
+    "textMode": "auto",
+    "wideLayout": true
+   },
+   "pluginVersion": "11.6.0",
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "editorMode": "code",
+     "expr": "sum(rate(qwen_ttl_tokens_total{job=\"sglang\",service=\"qwen38\",kind=~\"read\"}[$__rate_interval])) / sum(rate(qwen_ttl_tokens_total{job=\"sglang\",service=\"qwen38\",kind=~\"read|write_5m|write_1h|input\"}[$__rate_interval]))",
+     "instant": true,
+     "interval": "2s",
+     "legendFormat": "租约有效 / 输入",
+     "range": false,
+     "refId": "A"
+    }
+   ],
+   "title": "计费命中率",
+   "type": "stat"
+  },
+  {
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "description": "引擎口径：实际跳过 prefill 的 token 占输入的比例（L1+L2+L3）。",
+   "fieldConfig": {
+    "defaults": {
+     "color": {
+      "mode": "thresholds"
+     },
+     "decimals": 0,
+     "mappings": [],
+     "noValue": "无样本 / 无数据",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green"
+       }
+      ]
+     },
+     "unit": "percentunit"
+    },
+    "overrides": []
+   },
+   "gridPos": {
+    "h": 5,
+    "w": 4,
+    "x": 4,
+    "y": 11
+   },
+   "id": 13,
+   "interval": "2s",
+   "maxDataPoints": 600,
+   "options": {
+    "colorMode": "value",
+    "graphMode": "none",
+    "justifyMode": "auto",
+    "orientation": "auto",
+    "percentChangeColorMode": "standard",
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "showPercentChange": false,
+    "textMode": "auto",
+    "wideLayout": true
+   },
+   "pluginVersion": "11.6.0",
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "editorMode": "code",
+     "expr": "sum(rate(qwen_ttl_tokens_total{job=\"sglang\",service=\"qwen38\",kind=~\"physical\"}[$__rate_interval])) / sum(rate(qwen_ttl_tokens_total{job=\"sglang\",service=\"qwen38\",kind=~\"read|write_5m|write_1h|input\"}[$__rate_interval]))",
+     "instant": true,
+     "interval": "2s",
+     "legendFormat": "免算 / 输入",
+     "range": false,
+     "refId": "A"
+    }
+   ],
+   "title": "实际命中率",
+   "type": "stat"
+  },
+  {
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "description": "租约已过期、数据仍在留存期内被复用：省了计算，对用户计为写入。",
+   "fieldConfig": {
+    "defaults": {
+     "color": {
+      "mode": "thresholds"
+     },
+     "decimals": 0,
+     "mappings": [],
+     "noValue": "无样本 / 无数据",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green"
+       }
+      ]
+     },
+     "unit": "suffix:tok/s"
+    },
+    "overrides": []
+   },
+   "gridPos": {
+    "h": 5,
+    "w": 4,
+    "x": 8,
+    "y": 11
+   },
+   "id": 14,
+   "interval": "2s",
+   "maxDataPoints": 600,
+   "options": {
+    "colorMode": "value",
+    "graphMode": "none",
+    "justifyMode": "auto",
+    "orientation": "auto",
+    "percentChangeColorMode": "standard",
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "showPercentChange": false,
+    "textMode": "auto",
+    "wideLayout": true
+   },
+   "pluginVersion": "11.6.0",
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "editorMode": "code",
+     "expr": "sum(rate(qwen_ttl_tokens_total{job=\"sglang\",service=\"qwen38\",kind=~\"expired_reuse\"}[$__rate_interval]))",
+     "instant": true,
+     "interval": "2s",
+     "legendFormat": "实际命中但按写入计费",
+     "range": false,
+     "refId": "A"
+    }
+   ],
+   "title": "过期内部复用",
+   "type": "stat"
+  },
+  {
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "description": "租约有效但数据不在（容量淘汰、状态检查点粒度，或并发请求共享前缀时尚未算完）。按命中计费、由服务方重算。",
+   "fieldConfig": {
+    "defaults": {
+     "color": {
+      "mode": "thresholds"
+     },
+     "decimals": 0,
+     "mappings": [],
+     "noValue": "无样本 / 无数据",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green"
+       }
+      ]
+     },
+     "unit": "percentunit"
+    },
+    "overrides": []
+   },
+   "gridPos": {
+    "h": 5,
+    "w": 4,
+    "x": 12,
+    "y": 11
+   },
+   "id": 15,
+   "interval": "2s",
+   "maxDataPoints": 600,
+   "options": {
+    "colorMode": "value",
+    "graphMode": "none",
+    "justifyMode": "auto",
+    "orientation": "auto",
+    "percentChangeColorMode": "standard",
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "showPercentChange": false,
+    "textMode": "auto",
+    "wideLayout": true
+   },
+   "pluginVersion": "11.6.0",
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "editorMode": "code",
+     "expr": "sum(rate(qwen_ttl_tokens_total{job=\"sglang\",service=\"qwen38\",kind=~\"unbacked_read\"}[$__rate_interval])) / sum(rate(qwen_ttl_tokens_total{job=\"sglang\",service=\"qwen38\",kind=~\"read\"}[$__rate_interval]))",
+     "instant": true,
+     "interval": "2s",
+     "legendFormat": "占计费命中",
+     "range": false,
+     "refId": "A"
+    }
+   ],
+   "title": "计费命中但需重算",
+   "type": "stat"
+  },
+  {
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "description": "",
+   "fieldConfig": {
+    "defaults": {
+     "color": {
+      "mode": "thresholds"
+     },
+     "decimals": 0,
+     "mappings": [],
+     "noValue": "无样本 / 无数据",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green"
+       }
+      ]
+     },
+     "unit": "percentunit"
+    },
+    "overrides": []
+   },
+   "gridPos": {
+    "h": 5,
+    "w": 4,
+    "x": 16,
+    "y": 11
+   },
+   "id": 16,
+   "interval": "2s",
+   "maxDataPoints": 600,
+   "options": {
+    "colorMode": "value",
+    "graphMode": "none",
+    "justifyMode": "auto",
+    "orientation": "auto",
+    "percentChangeColorMode": "standard",
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "showPercentChange": false,
+    "textMode": "auto",
+    "wideLayout": true
+   },
+   "pluginVersion": "11.6.0",
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "editorMode": "code",
+     "expr": "sum(rate(qwen_ttl_requests_total{job=\"sglang\",service=\"qwen38\",tier=\"1h\"}[$__rate_interval])) / sum(rate(qwen_ttl_requests_total{job=\"sglang\",service=\"qwen38\"}[$__rate_interval]))",
+     "instant": true,
+     "interval": "2s",
+     "legendFormat": "1h / 全部",
+     "range": false,
+     "refId": "A"
+    }
+   ],
+   "title": "1h 档请求占比",
+   "type": "stat"
+  },
+  {
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "description": "",
+   "fieldConfig": {
+    "defaults": {
+     "color": {
+      "mode": "thresholds"
+     },
+     "decimals": 0,
+     "mappings": [],
+     "noValue": "无样本 / 无数据",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green"
+       }
+      ]
+     },
+     "unit": "short"
+    },
+    "overrides": []
+   },
+   "gridPos": {
+    "h": 5,
+    "w": 4,
+    "x": 20,
+    "y": 11
+   },
+   "id": 17,
+   "interval": "2s",
+   "maxDataPoints": 600,
+   "options": {
+    "colorMode": "value",
+    "graphMode": "none",
+    "justifyMode": "auto",
+    "orientation": "auto",
+    "percentChangeColorMode": "standard",
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "showPercentChange": false,
+    "textMode": "auto",
+    "wideLayout": true
+   },
+   "pluginVersion": "11.6.0",
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "editorMode": "code",
+     "expr": "max(qwen_ttl_lease_rows{job=\"sglang\",service=\"qwen38\"})",
+     "instant": true,
+     "interval": "2s",
+     "legendFormat": "256 token 块",
+     "range": false,
+     "refId": "A"
+    }
+   ],
+   "title": "租约表行数",
+   "type": "stat"
+  },
+  {
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "description": "计费命中率高于实际：有效租约的数据被淘汰；低于实际：过期数据被内部复用。分层曲线来自引擎原生统计（含输出 token 的续算）。",
+   "fieldConfig": {
+    "defaults": {
+     "color": {
+      "mode": "palette-classic"
+     },
+     "custom": {
+      "axisBorderShow": false,
+      "axisCenteredZero": false,
+      "axisColorMode": "text",
+      "axisLabel": "",
+      "axisPlacement": "auto",
+      "barAlignment": 0,
+      "barWidthFactor": 0.6,
+      "drawStyle": "line",
+      "fillOpacity": 10,
+      "gradientMode": "none",
+      "hideFrom": {
+       "legend": false,
+       "tooltip": false,
+       "viz": false
+      },
+      "insertNulls": false,
+      "lineInterpolation": "linear",
+      "lineWidth": 2,
+      "pointSize": 5,
+      "scaleDistribution": {
+       "type": "linear"
+      },
+      "showPoints": "never",
+      "spanNulls": false,
+      "stacking": {
+       "group": "A",
+       "mode": "none"
+      },
+      "thresholdsStyle": {
+       "mode": "off"
+      }
+     },
+     "mappings": [],
+     "min": 0,
+     "noValue": "无样本 / 无数据",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green"
+       },
+       {
+        "color": "red",
+        "value": 80
+       }
+      ]
+     },
+     "unit": "percentunit"
+    },
+    "overrides": []
+   },
+   "gridPos": {
+    "h": 8,
+    "w": 12,
+    "x": 0,
+    "y": 16
+   },
+   "id": 18,
+   "interval": "2s",
+   "maxDataPoints": 600,
+   "options": {
+    "legend": {
+     "calcs": [
+      "lastNotNull",
+      "max"
+     ],
+     "displayMode": "table",
+     "placement": "bottom",
+     "showLegend": true
+    },
+    "tooltip": {
+     "hideZeros": false,
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "pluginVersion": "11.6.0",
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "editorMode": "code",
+     "expr": "sum(rate(qwen_ttl_tokens_total{job=\"sglang\",service=\"qwen38\",kind=~\"read\"}[$__rate_interval])) / sum(rate(qwen_ttl_tokens_total{job=\"sglang\",service=\"qwen38\",kind=~\"read|write_5m|write_1h|input\"}[$__rate_interval]))",
+     "instant": false,
+     "interval": "2s",
+     "legendFormat": "计费命中率",
+     "range": true,
+     "refId": "A"
+    },
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "editorMode": "code",
+     "expr": "sum(rate(qwen_ttl_tokens_total{job=\"sglang\",service=\"qwen38\",kind=~\"physical\"}[$__rate_interval])) / sum(rate(qwen_ttl_tokens_total{job=\"sglang\",service=\"qwen38\",kind=~\"read|write_5m|write_1h|input\"}[$__rate_interval]))",
+     "instant": false,
+     "interval": "2s",
+     "legendFormat": "实际命中率",
+     "range": true,
+     "refId": "B"
+    },
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "editorMode": "code",
+     "expr": "sum(rate(sglang:prefill_effective_tokens_total{job=\"sglang\",service=\"qwen38\",model_name=\"Qwen3.8-27B-FP8\",tp_rank=\"0\",pp_rank=\"0\",mode=\"device_hit\"}[$__rate_interval])) / sum(rate(sglang:prefill_effective_tokens_total{job=\"sglang\",service=\"qwen38\",model_name=\"Qwen3.8-27B-FP8\",tp_rank=\"0\",pp_rank=\"0\"}[$__rate_interval]))",
+     "instant": false,
+     "interval": "2s",
+     "legendFormat": "实际 · L1 GPU",
+     "range": true,
+     "refId": "C"
+    },
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "editorMode": "code",
+     "expr": "sum(rate(sglang:prefill_effective_tokens_total{job=\"sglang\",service=\"qwen38\",model_name=\"Qwen3.8-27B-FP8\",tp_rank=\"0\",pp_rank=\"0\",mode=\"host_hit\"}[$__rate_interval])) / sum(rate(sglang:prefill_effective_tokens_total{job=\"sglang\",service=\"qwen38\",model_name=\"Qwen3.8-27B-FP8\",tp_rank=\"0\",pp_rank=\"0\"}[$__rate_interval]))",
+     "instant": false,
+     "interval": "2s",
+     "legendFormat": "实际 · L2 主机内存",
+     "range": true,
+     "refId": "D"
+    },
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "editorMode": "code",
+     "expr": "sum(rate(sglang:prefill_effective_tokens_total{job=\"sglang\",service=\"qwen38\",model_name=\"Qwen3.8-27B-FP8\",tp_rank=\"0\",pp_rank=\"0\",mode=\"storage_hit\"}[$__rate_interval])) / sum(rate(sglang:prefill_effective_tokens_total{job=\"sglang\",service=\"qwen38\",model_name=\"Qwen3.8-27B-FP8\",tp_rank=\"0\",pp_rank=\"0\"}[$__rate_interval]))",
+     "instant": false,
+     "interval": "2s",
+     "legendFormat": "实际 · L3 磁盘",
+     "range": true,
+     "refId": "E"
+    }
+   ],
+   "title": "命中率 · 计费 vs 实际",
+   "type": "timeseries"
+  },
+  {
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "description": "四项互斥，之和等于输入 token。",
+   "fieldConfig": {
+    "defaults": {
+     "color": {
+      "mode": "palette-classic"
+     },
+     "custom": {
+      "axisBorderShow": false,
+      "axisCenteredZero": false,
+      "axisColorMode": "text",
+      "axisLabel": "",
+      "axisPlacement": "auto",
+      "barAlignment": 0,
+      "barWidthFactor": 0.6,
+      "drawStyle": "line",
+      "fillOpacity": 10,
+      "gradientMode": "none",
+      "hideFrom": {
+       "legend": false,
+       "tooltip": false,
+       "viz": false
+      },
+      "insertNulls": false,
+      "lineInterpolation": "linear",
+      "lineWidth": 2,
+      "pointSize": 5,
+      "scaleDistribution": {
+       "type": "linear"
+      },
+      "showPoints": "never",
+      "spanNulls": false,
+      "stacking": {
+       "group": "A",
+       "mode": "none"
+      },
+      "thresholdsStyle": {
+       "mode": "off"
+      }
+     },
+     "mappings": [],
+     "min": 0,
+     "noValue": "无样本 / 无数据",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green"
+       },
+       {
+        "color": "red",
+        "value": 80
+       }
+      ]
+     },
+     "unit": "suffix:tok/s"
+    },
+    "overrides": []
+   },
+   "gridPos": {
+    "h": 8,
+    "w": 12,
+    "x": 12,
+    "y": 16
+   },
+   "id": 19,
+   "interval": "2s",
+   "maxDataPoints": 600,
+   "options": {
+    "legend": {
+     "calcs": [
+      "lastNotNull",
+      "max"
+     ],
+     "displayMode": "table",
+     "placement": "bottom",
+     "showLegend": true
+    },
+    "tooltip": {
+     "hideZeros": false,
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "pluginVersion": "11.6.0",
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "editorMode": "code",
+     "expr": "sum(rate(qwen_ttl_tokens_total{job=\"sglang\",service=\"qwen38\",kind=~\"read\"}[$__rate_interval]))",
+     "instant": false,
+     "interval": "2s",
+     "legendFormat": "缓存读取",
+     "range": true,
+     "refId": "A"
+    },
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "editorMode": "code",
+     "expr": "sum(rate(qwen_ttl_tokens_total{job=\"sglang\",service=\"qwen38\",kind=~\"write_5m\"}[$__rate_interval]))",
+     "instant": false,
+     "interval": "2s",
+     "legendFormat": "缓存写入 · 5m",
+     "range": true,
+     "refId": "B"
+    },
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "editorMode": "code",
+     "expr": "sum(rate(qwen_ttl_tokens_total{job=\"sglang\",service=\"qwen38\",kind=~\"write_1h\"}[$__rate_interval]))",
+     "instant": false,
+     "interval": "2s",
+     "legendFormat": "缓存写入 · 1h",
+     "range": true,
+     "refId": "C"
+    },
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "editorMode": "code",
+     "expr": "sum(rate(qwen_ttl_tokens_total{job=\"sglang\",service=\"qwen38\",kind=~\"input\"}[$__rate_interval]))",
+     "instant": false,
+     "interval": "2s",
+     "legendFormat": "普通输入 · 不足一块",
+     "range": true,
+     "refId": "D"
+    }
+   ],
+   "title": "计费 token 构成",
+   "type": "timeseries"
+  },
+  {
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "description": "",
+   "fieldConfig": {
+    "defaults": {
+     "color": {
+      "mode": "palette-classic"
+     },
+     "custom": {
+      "axisBorderShow": false,
+      "axisCenteredZero": false,
+      "axisColorMode": "text",
+      "axisLabel": "",
+      "axisPlacement": "auto",
+      "barAlignment": 0,
+      "barWidthFactor": 0.6,
+      "drawStyle": "line",
+      "fillOpacity": 10,
+      "gradientMode": "none",
+      "hideFrom": {
+       "legend": false,
+       "tooltip": false,
+       "viz": false
+      },
+      "insertNulls": false,
+      "lineInterpolation": "linear",
+      "lineWidth": 2,
+      "pointSize": 5,
+      "scaleDistribution": {
+       "type": "linear"
+      },
+      "showPoints": "never",
+      "spanNulls": false,
+      "stacking": {
+       "group": "A",
+       "mode": "none"
+      },
+      "thresholdsStyle": {
+       "mode": "off"
+      }
+     },
+     "mappings": [],
+     "min": 0,
+     "noValue": "无样本 / 无数据",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green"
+       },
+       {
+        "color": "red",
+        "value": 80
+       }
+      ]
+     },
+     "unit": "suffix:tok/s"
+    },
+    "overrides": []
+   },
+   "gridPos": {
+    "h": 7,
+    "w": 12,
+    "x": 0,
+    "y": 24
+   },
+   "id": 20,
+   "interval": "2s",
+   "maxDataPoints": 600,
+   "options": {
+    "legend": {
+     "calcs": [
+      "lastNotNull",
+      "max"
+     ],
+     "displayMode": "table",
+     "placement": "bottom",
+     "showLegend": true
+    },
+    "tooltip": {
+     "hideZeros": false,
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "pluginVersion": "11.6.0",
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "editorMode": "code",
+     "expr": "sum(rate(qwen_ttl_tokens_total{job=\"sglang\",service=\"qwen38\",kind=~\"expired_reuse\"}[$__rate_interval]))",
+     "instant": false,
+     "interval": "2s",
+     "legendFormat": "过期内部复用 · 实际命中、计费写入",
+     "range": true,
+     "refId": "A"
+    },
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "editorMode": "code",
+     "expr": "sum(rate(qwen_ttl_tokens_total{job=\"sglang\",service=\"qwen38\",kind=~\"unbacked_read\"}[$__rate_interval]))",
+     "instant": false,
+     "interval": "2s",
+     "legendFormat": "计费命中、实际重算",
+     "range": true,
+     "refId": "B"
+    }
+   ],
+   "title": "计费与实际的差异",
+   "type": "timeseries"
+  },
+  {
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "description": "用于评估留存上限 T_keep 取多长才划算（设计 4.10）。",
+   "fieldConfig": {
+    "defaults": {
+     "color": {
+      "mode": "palette-classic"
+     },
+     "custom": {
+      "axisBorderShow": false,
+      "axisCenteredZero": false,
+      "axisColorMode": "text",
+      "axisLabel": "",
+      "axisPlacement": "auto",
+      "barAlignment": 0,
+      "barWidthFactor": 0.6,
+      "drawStyle": "line",
+      "fillOpacity": 10,
+      "gradientMode": "none",
+      "hideFrom": {
+       "legend": false,
+       "tooltip": false,
+       "viz": false
+      },
+      "insertNulls": false,
+      "lineInterpolation": "linear",
+      "lineWidth": 2,
+      "pointSize": 5,
+      "scaleDistribution": {
+       "type": "linear"
+      },
+      "showPoints": "never",
+      "spanNulls": false,
+      "stacking": {
+       "group": "A",
+       "mode": "none"
+      },
+      "thresholdsStyle": {
+       "mode": "off"
+      }
+     },
+     "mappings": [],
+     "min": 0,
+     "noValue": "无样本 / 无数据",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green"
+       },
+       {
+        "color": "red",
+        "value": 80
+       }
+      ]
+     },
+     "unit": "s"
+    },
+    "overrides": []
+   },
+   "gridPos": {
+    "h": 7,
+    "w": 12,
+    "x": 12,
+    "y": 24
+   },
+   "id": 21,
+   "interval": "2s",
+   "maxDataPoints": 600,
+   "options": {
+    "legend": {
+     "calcs": [
+      "lastNotNull",
+      "max"
+     ],
+     "displayMode": "table",
+     "placement": "bottom",
+     "showLegend": true
+    },
+    "tooltip": {
+     "hideZeros": false,
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "pluginVersion": "11.6.0",
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "editorMode": "code",
+     "expr": "histogram_quantile(0.5, sum by (le) (rate(qwen_ttl_idle_seconds_bucket{job=\"sglang\",service=\"qwen38\",kind=\"hit\"}[5m])))",
+     "instant": false,
+     "interval": "2s",
+     "legendFormat": "计费命中 P50",
+     "range": true,
+     "refId": "A"
+    },
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "editorMode": "code",
+     "expr": "histogram_quantile(0.95, sum by (le) (rate(qwen_ttl_idle_seconds_bucket{job=\"sglang\",service=\"qwen38\",kind=\"hit\"}[5m])))",
+     "instant": false,
+     "interval": "2s",
+     "legendFormat": "计费命中 P95",
+     "range": true,
+     "refId": "B"
+    },
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "editorMode": "code",
+     "expr": "histogram_quantile(0.5, sum by (le) (rate(qwen_ttl_idle_seconds_bucket{job=\"sglang\",service=\"qwen38\",kind=\"expired_reuse\"}[5m])))",
+     "instant": false,
+     "interval": "2s",
+     "legendFormat": "过期复用 P50",
+     "range": true,
+     "refId": "C"
+    },
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "editorMode": "code",
+     "expr": "histogram_quantile(0.95, sum by (le) (rate(qwen_ttl_idle_seconds_bucket{job=\"sglang\",service=\"qwen38\",kind=\"expired_reuse\"}[5m])))",
+     "instant": false,
+     "interval": "2s",
+     "legendFormat": "过期复用 P95",
+     "range": true,
+     "refId": "D"
+    }
+   ],
+   "title": "前缀再次被使用时的空闲时长",
+   "type": "timeseries"
+  },
+  {
+   "collapsed": false,
+   "gridPos": {
+    "h": 1,
+    "w": 24,
+    "x": 0,
+    "y": 31
+   },
+   "id": 22,
+   "title": "L3 · 本地 NVMe（仅 1h 档）",
+   "type": "row",
+   "description": ""
+  },
+  {
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "description": "L2 淘汰队尾里租约有效的 1h 条目。丢弃表示寿命预算不足。",
+   "fieldConfig": {
+    "defaults": {
+     "color": {
+      "mode": "palette-classic"
+     },
+     "custom": {
+      "axisBorderShow": false,
+      "axisCenteredZero": false,
+      "axisColorMode": "text",
+      "axisLabel": "",
+      "axisPlacement": "auto",
+      "barAlignment": 0,
+      "barWidthFactor": 0.6,
+      "drawStyle": "line",
+      "fillOpacity": 10,
+      "gradientMode": "none",
+      "hideFrom": {
+       "legend": false,
+       "tooltip": false,
+       "viz": false
+      },
+      "insertNulls": false,
+      "lineInterpolation": "linear",
+      "lineWidth": 2,
+      "pointSize": 5,
+      "scaleDistribution": {
+       "type": "linear"
+      },
+      "showPoints": "never",
+      "spanNulls": false,
+      "stacking": {
+       "group": "A",
+       "mode": "none"
+      },
+      "thresholdsStyle": {
+       "mode": "off"
+      }
+     },
+     "mappings": [],
+     "min": 0,
+     "noValue": "无样本 / 无数据",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green"
+       },
+       {
+        "color": "red",
+        "value": 80
+       }
+      ]
+     },
+     "unit": "suffix:tok/s"
+    },
+    "overrides": []
+   },
+   "gridPos": {
+    "h": 7,
+    "w": 8,
+    "x": 0,
+    "y": 32
+   },
+   "id": 23,
+   "interval": "2s",
+   "maxDataPoints": 600,
+   "options": {
+    "legend": {
+     "calcs": [
+      "lastNotNull",
+      "max"
+     ],
+     "displayMode": "table",
+     "placement": "bottom",
+     "showLegend": true
+    },
+    "tooltip": {
+     "hideZeros": false,
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "pluginVersion": "11.6.0",
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "editorMode": "code",
+     "expr": "sum(rate(qwen_ttl_tokens_total{job=\"sglang\",service=\"qwen38\",kind=~\"l3_written\"}[$__rate_interval]))",
+     "instant": false,
+     "interval": "2s",
+     "legendFormat": "写入",
+     "range": true,
+     "refId": "A"
+    },
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "editorMode": "code",
+     "expr": "sum(rate(qwen_ttl_tokens_total{job=\"sglang\",service=\"qwen38\",kind=~\"l3_dropped\"}[$__rate_interval]))",
+     "instant": false,
+     "interval": "2s",
+     "legendFormat": "丢弃 · 写入预算用完",
+     "range": true,
+     "refId": "B"
+    }
+   ],
+   "title": "L3 写入与丢弃",
+   "type": "timeseries"
+  },
+  {
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "description": "只有内存匹配点之后的块确实写进过 L3 才查盘。",
+   "fieldConfig": {
+    "defaults": {
+     "color": {
+      "mode": "palette-classic"
+     },
+     "custom": {
+      "axisBorderShow": false,
+      "axisCenteredZero": false,
+      "axisColorMode": "text",
+      "axisLabel": "",
+      "axisPlacement": "auto",
+      "barAlignment": 0,
+      "barWidthFactor": 0.6,
+      "drawStyle": "line",
+      "fillOpacity": 10,
+      "gradientMode": "none",
+      "hideFrom": {
+       "legend": false,
+       "tooltip": false,
+       "viz": false
+      },
+      "insertNulls": false,
+      "lineInterpolation": "linear",
+      "lineWidth": 2,
+      "pointSize": 5,
+      "scaleDistribution": {
+       "type": "linear"
+      },
+      "showPoints": "never",
+      "spanNulls": false,
+      "stacking": {
+       "group": "A",
+       "mode": "none"
+      },
+      "thresholdsStyle": {
+       "mode": "off"
+      }
+     },
+     "mappings": [],
+     "min": 0,
+     "noValue": "无样本 / 无数据",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green"
+       },
+       {
+        "color": "red",
+        "value": 80
+       }
+      ]
+     },
+     "unit": "short"
+    },
+    "overrides": []
+   },
+   "gridPos": {
+    "h": 7,
+    "w": 8,
+    "x": 8,
+    "y": 32
+   },
+   "id": 24,
+   "interval": "2s",
+   "maxDataPoints": 600,
+   "options": {
+    "legend": {
+     "calcs": [
+      "lastNotNull",
+      "max"
+     ],
+     "displayMode": "table",
+     "placement": "bottom",
+     "showLegend": true
+    },
+    "tooltip": {
+     "hideZeros": false,
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "pluginVersion": "11.6.0",
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "editorMode": "code",
+     "expr": "sum(increase(qwen_ttl_tokens_total{job=\"sglang\",service=\"qwen38\",kind=\"l3_lookup\"}[$__rate_interval]))",
+     "instant": false,
+     "interval": "2s",
+     "legendFormat": "查盘次数",
+     "range": true,
+     "refId": "A"
+    },
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "editorMode": "code",
+     "expr": "sum(increase(sglang:prefill_effective_tokens_total{job=\"sglang\",service=\"qwen38\",model_name=\"Qwen3.8-27B-FP8\",tp_rank=\"0\",pp_rank=\"0\",mode=\"storage_hit\"}[$__rate_interval]))",
+     "instant": false,
+     "interval": "2s",
+     "legendFormat": "读回 token",
+     "range": true,
+     "refId": "B"
+    }
+   ],
+   "title": "L3 查盘与读回",
+   "type": "timeseries"
+  },
+  {
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "description": "每 token 约 170–240 KB（8 个 rank 合计，含 Mamba 状态）。",
+   "fieldConfig": {
+    "defaults": {
+     "color": {
+      "mode": "palette-classic"
+     },
+     "custom": {
+      "axisBorderShow": false,
+      "axisCenteredZero": false,
+      "axisColorMode": "text",
+      "axisLabel": "",
+      "axisPlacement": "auto",
+      "barAlignment": 0,
+      "barWidthFactor": 0.6,
+      "drawStyle": "line",
+      "fillOpacity": 10,
+      "gradientMode": "none",
+      "hideFrom": {
+       "legend": false,
+       "tooltip": false,
+       "viz": false
+      },
+      "insertNulls": false,
+      "lineInterpolation": "linear",
+      "lineWidth": 2,
+      "pointSize": 5,
+      "scaleDistribution": {
+       "type": "linear"
+      },
+      "showPoints": "never",
+      "spanNulls": false,
+      "stacking": {
+       "group": "A",
+       "mode": "none"
+      },
+      "thresholdsStyle": {
+       "mode": "off"
+      }
+     },
+     "mappings": [],
+     "min": 0,
+     "noValue": "无样本 / 无数据",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green"
+       },
+       {
+        "color": "red",
+        "value": 80
+       }
+      ]
+     },
+     "unit": "short"
+    },
+    "overrides": []
+   },
+   "gridPos": {
+    "h": 7,
+    "w": 8,
+    "x": 16,
+    "y": 32
+   },
+   "id": 25,
+   "interval": "2s",
+   "maxDataPoints": 600,
+   "options": {
+    "legend": {
+     "calcs": [
+      "lastNotNull",
+      "max"
+     ],
+     "displayMode": "table",
+     "placement": "bottom",
+     "showLegend": true
+    },
+    "tooltip": {
+     "hideZeros": false,
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "pluginVersion": "11.6.0",
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "editorMode": "code",
+     "expr": "sum(increase(qwen_ttl_tokens_total{job=\"sglang\",service=\"qwen38\",kind=\"l3_written\"}[$__range]))",
+     "instant": false,
+     "interval": "2s",
+     "legendFormat": "写入 token",
+     "range": true,
+     "refId": "A"
+    },
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "editorMode": "code",
+     "expr": "sum(increase(qwen_ttl_tokens_total{job=\"sglang\",service=\"qwen38\",kind=\"l3_dropped\"}[$__range]))",
+     "instant": false,
+     "interval": "2s",
+     "legendFormat": "丢弃 token",
+     "range": true,
+     "refId": "B"
+    }
+   ],
+   "title": "L3 累计写入量 · 所选时段",
+   "type": "timeseries"
+  },
+  {
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "description": "match 匹配截短，admit 续约与计费，storage_gate 查盘门控，tail_scan L2 队尾扫描。",
+   "fieldConfig": {
+    "defaults": {
+     "color": {
+      "mode": "palette-classic"
+     },
+     "custom": {
+      "axisBorderShow": false,
+      "axisCenteredZero": false,
+      "axisColorMode": "text",
+      "axisLabel": "",
+      "axisPlacement": "auto",
+      "barAlignment": 0,
+      "barWidthFactor": 0.6,
+      "drawStyle": "line",
+      "fillOpacity": 10,
+      "gradientMode": "none",
+      "hideFrom": {
+       "legend": false,
+       "tooltip": false,
+       "viz": false
+      },
+      "insertNulls": false,
+      "lineInterpolation": "linear",
+      "lineWidth": 2,
+      "pointSize": 5,
+      "scaleDistribution": {
+       "type": "linear"
+      },
+      "showPoints": "never",
+      "spanNulls": false,
+      "stacking": {
+       "group": "A",
+       "mode": "none"
+      },
+      "thresholdsStyle": {
+       "mode": "off"
+      }
+     },
+     "mappings": [],
+     "min": 0,
+     "noValue": "无样本 / 无数据",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green"
+       },
+       {
+        "color": "red",
+        "value": 80
+       }
+      ]
+     },
+     "unit": "suffix:cores"
+    },
+    "overrides": []
+   },
+   "gridPos": {
+    "h": 7,
+    "w": 12,
+    "x": 0,
+    "y": 39
+   },
+   "id": 26,
+   "interval": "2s",
+   "maxDataPoints": 600,
+   "options": {
+    "legend": {
+     "calcs": [
+      "lastNotNull",
+      "max"
+     ],
+     "displayMode": "table",
+     "placement": "bottom",
+     "showLegend": true
+    },
+    "tooltip": {
+     "hideZeros": false,
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "pluginVersion": "11.6.0",
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "editorMode": "code",
+     "expr": "sum by (part) (rate(qwen_ttl_overhead_seconds_total{job=\"sglang\",service=\"qwen38\"}[$__rate_interval]))",
+     "instant": false,
+     "interval": "2s",
+     "legendFormat": "{{part}}",
+     "range": true,
+     "refId": "A"
+    }
+   ],
+   "title": "TTL 记账开销 · 调度器 CPU",
+   "type": "timeseries"
+  },
+  {
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "description": "引擎原生指标。",
+   "fieldConfig": {
+    "defaults": {
+     "color": {
+      "mode": "palette-classic"
+     },
+     "custom": {
+      "axisBorderShow": false,
+      "axisCenteredZero": false,
+      "axisColorMode": "text",
+      "axisLabel": "",
+      "axisPlacement": "auto",
+      "barAlignment": 0,
+      "barWidthFactor": 0.6,
+      "drawStyle": "line",
+      "fillOpacity": 10,
+      "gradientMode": "none",
+      "hideFrom": {
+       "legend": false,
+       "tooltip": false,
+       "viz": false
+      },
+      "insertNulls": false,
+      "lineInterpolation": "linear",
+      "lineWidth": 2,
+      "pointSize": 5,
+      "scaleDistribution": {
+       "type": "linear"
+      },
+      "showPoints": "never",
+      "spanNulls": false,
+      "stacking": {
+       "group": "A",
+       "mode": "none"
+      },
+      "thresholdsStyle": {
+       "mode": "off"
+      }
+     },
+     "mappings": [],
+     "min": 0,
+     "noValue": "无样本 / 无数据",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green"
+       },
+       {
+        "color": "red",
+        "value": 80
+       }
+      ]
+     },
+     "unit": "suffix:tok/s"
+    },
+    "overrides": []
+   },
+   "gridPos": {
+    "h": 7,
+    "w": 12,
+    "x": 12,
+    "y": 39
+   },
+   "id": 27,
+   "interval": "2s",
+   "maxDataPoints": 600,
+   "options": {
+    "legend": {
+     "calcs": [
+      "lastNotNull",
+      "max"
+     ],
+     "displayMode": "table",
+     "placement": "bottom",
+     "showLegend": true
+    },
+    "tooltip": {
+     "hideZeros": false,
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "pluginVersion": "11.6.0",
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "editorMode": "code",
+     "expr": "sum(rate(sglang:storage_prefetch_unfulfilled_tokens_total{job=\"sglang\",service=\"qwen38\",model_name=\"Qwen3.8-27B-FP8\",tp_rank=\"0\",pp_rank=\"0\"}[$__rate_interval]))",
+     "instant": false,
+     "interval": "2s",
+     "legendFormat": "未兑现",
+     "range": true,
+     "refId": "A"
+    },
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "editorMode": "code",
+     "expr": "sum(rate(sglang:storage_prefetch_deferred_tokens_total{job=\"sglang\",service=\"qwen38\",model_name=\"Qwen3.8-27B-FP8\",tp_rank=\"0\",pp_rank=\"0\"}[$__rate_interval]))",
+     "instant": false,
+     "interval": "2s",
+     "legendFormat": "推迟",
+     "range": true,
+     "refId": "B"
+    }
+   ],
+   "title": "L3 预取未兑现 / 推迟",
+   "type": "timeseries"
+  },
+  {
+   "collapsed": false,
+   "gridPos": {
+    "h": 1,
+    "w": 24,
+    "x": 0,
+    "y": 46
+   },
+   "id": 28,
    "panels": [],
    "title": "容量与并发",
    "type": "row"
@@ -696,9 +2306,9 @@
     "h": 6,
     "w": 6,
     "x": 0,
-    "y": 11
+    "y": 47
    },
-   "id": 12,
+   "id": 29,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -772,9 +2382,9 @@
     "h": 6,
     "w": 6,
     "x": 6,
-    "y": 11
+    "y": 47
    },
-   "id": 13,
+   "id": 30,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -848,9 +2458,9 @@
     "h": 6,
     "w": 6,
     "x": 12,
-    "y": 11
+    "y": 47
    },
-   "id": 14,
+   "id": 31,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -924,9 +2534,9 @@
     "h": 6,
     "w": 6,
     "x": 18,
-    "y": 11
+    "y": 47
    },
-   "id": 15,
+   "id": 32,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -1030,9 +2640,9 @@
     "h": 11,
     "w": 8,
     "x": 0,
-    "y": 17
+    "y": 53
    },
-   "id": 16,
+   "id": 33,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -1177,9 +2787,9 @@
     "h": 11,
     "w": 8,
     "x": 9,
-    "y": 17
+    "y": 53
    },
-   "id": 17,
+   "id": 34,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -1310,9 +2920,9 @@
     "h": 8,
     "w": 8,
     "x": 0,
-    "y": 28
+    "y": 64
    },
-   "id": 18,
+   "id": 35,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -1443,9 +3053,9 @@
     "h": 8,
     "w": 8,
     "x": 8,
-    "y": 28
+    "y": 64
    },
-   "id": 19,
+   "id": 36,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -1576,9 +3186,9 @@
     "h": 8,
     "w": 8,
     "x": 16,
-    "y": 28
+    "y": 64
    },
-   "id": 20,
+   "id": 37,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -1648,9 +3258,9 @@
     "h": 1,
     "w": 24,
     "x": 0,
-    "y": 36
+    "y": 72
    },
-   "id": 21,
+   "id": 38,
    "panels": [],
    "title": "延迟分析 · 引擎观测",
    "type": "row"
@@ -1722,9 +3332,9 @@
     "h": 8,
     "w": 8,
     "x": 0,
-    "y": 37
+    "y": 73
    },
-   "id": 22,
+   "id": 39,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -1855,9 +3465,9 @@
     "h": 8,
     "w": 8,
     "x": 8,
-    "y": 37
+    "y": 73
    },
-   "id": 23,
+   "id": 40,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -1988,9 +3598,9 @@
     "h": 8,
     "w": 8,
     "x": 16,
-    "y": 37
+    "y": 73
    },
-   "id": 24,
+   "id": 41,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -2122,9 +3732,9 @@
     "h": 7,
     "w": 8,
     "x": 0,
-    "y": 45
+    "y": 81
    },
-   "id": 25,
+   "id": 42,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -2229,9 +3839,9 @@
     "h": 7,
     "w": 8,
     "x": 8,
-    "y": 45
+    "y": 81
    },
-   "id": 26,
+   "id": 43,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -2362,9 +3972,9 @@
     "h": 7,
     "w": 24,
     "x": 0,
-    "y": 52
+    "y": 88
    },
-   "id": 27,
+   "id": 44,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -2495,9 +4105,9 @@
     "h": 8,
     "w": 8,
     "x": 16,
-    "y": 59
+    "y": 95
    },
-   "id": 28,
+   "id": 45,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -2541,9 +4151,9 @@
     "h": 1,
     "w": 24,
     "x": 0,
-    "y": 67
+    "y": 103
    },
-   "id": 29,
+   "id": 46,
    "panels": [],
    "title": "长上下文与请求构成",
    "type": "row"
@@ -2615,9 +4225,9 @@
     "h": 7,
     "w": 12,
     "x": 0,
-    "y": 68
+    "y": 104
    },
-   "id": 30,
+   "id": 47,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -2761,9 +4371,9 @@
     "h": 7,
     "w": 12,
     "x": 12,
-    "y": 68
+    "y": 104
    },
-   "id": 31,
+   "id": 48,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -2882,9 +4492,9 @@
     "h": 7,
     "w": 12,
     "x": 0,
-    "y": 75
+    "y": 111
    },
-   "id": 32,
+   "id": 49,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -3029,9 +4639,9 @@
     "h": 7,
     "w": 12,
     "x": 12,
-    "y": 75
+    "y": 111
    },
-   "id": 33,
+   "id": 50,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -3162,9 +4772,9 @@
     "h": 8,
     "w": 8,
     "x": 0,
-    "y": 82
+    "y": 118
    },
-   "id": 34,
+   "id": 51,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -3295,9 +4905,9 @@
     "h": 7,
     "w": 12,
     "x": 12,
-    "y": 82
+    "y": 118
    },
-   "id": 35,
+   "id": 52,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -3373,9 +4983,9 @@
     "h": 9,
     "w": 12,
     "x": 12,
-    "y": 89
+    "y": 125
    },
-   "id": 36,
+   "id": 53,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -3460,9 +5070,9 @@
     "h": 9,
     "w": 12,
     "x": 0,
-    "y": 90
+    "y": 126
    },
-   "id": 37,
+   "id": 54,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -3528,9 +5138,9 @@
     "h": 1,
     "w": 24,
     "x": 0,
-    "y": 99
+    "y": 135
    },
-   "id": 38,
+   "id": 55,
    "panels": [],
    "title": "投机解码 · 随实际配置显示",
    "type": "row"
@@ -3603,9 +5213,9 @@
     "h": 8,
     "w": 12,
     "x": 0,
-    "y": 100
+    "y": 136
    },
-   "id": 39,
+   "id": 56,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -3649,9 +5259,9 @@
     "h": 1,
     "w": 24,
     "x": 0,
-    "y": 108
+    "y": 144
    },
-   "id": 40,
+   "id": 57,
    "panels": [],
    "title": "HTTP · 引擎原生指标",
    "type": "row"
@@ -3723,9 +5333,9 @@
     "h": 8,
     "w": 12,
     "x": 0,
-    "y": 109
+    "y": 145
    },
-   "id": 41,
+   "id": 58,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -3772,9 +5382,9 @@
     "h": 8,
     "w": 12,
     "x": 12,
-    "y": 109
+    "y": 145
    },
-   "id": 42,
+   "id": 59,
    "options": {
     "code": {
      "language": "plaintext",
@@ -3855,9 +5465,9 @@
     "h": 7,
     "w": 12,
     "x": 0,
-    "y": 117
+    "y": 153
    },
-   "id": 43,
+   "id": 60,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -3978,9 +5588,9 @@
     "h": 7,
     "w": 12,
     "x": 12,
-    "y": 117
+    "y": 153
    },
-   "id": 44,
+   "id": 61,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -4050,9 +5660,9 @@
     "h": 1,
     "w": 24,
     "x": 0,
-    "y": 124
+    "y": 160
    },
-   "id": 45,
+   "id": 62,
    "panels": [],
    "title": "本机 8×RTX 5090 · GPU 与主机",
    "type": "row"
@@ -4124,9 +5734,9 @@
     "h": 8,
     "w": 12,
     "x": 0,
-    "y": 125
+    "y": 161
    },
-   "id": 46,
+   "id": 63,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -4231,9 +5841,9 @@
     "h": 8,
     "w": 12,
     "x": 12,
-    "y": 125
+    "y": 161
    },
-   "id": 47,
+   "id": 64,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -4338,9 +5948,9 @@
     "h": 8,
     "w": 12,
     "x": 0,
-    "y": 133
+    "y": 169
    },
-   "id": 48,
+   "id": 65,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -4445,9 +6055,9 @@
     "h": 8,
     "w": 12,
     "x": 12,
-    "y": 133
+    "y": 169
    },
-   "id": 49,
+   "id": 66,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -4552,9 +6162,9 @@
     "h": 7,
     "w": 12,
     "x": 0,
-    "y": 141
+    "y": 177
    },
-   "id": 50,
+   "id": 67,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -4685,9 +6295,9 @@
     "h": 7,
     "w": 12,
     "x": 12,
-    "y": 141
+    "y": 177
    },
-   "id": 51,
+   "id": 68,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -4757,9 +6367,9 @@
     "h": 1,
     "w": 24,
     "x": 0,
-    "y": 156
+    "y": 192
    },
-   "id": 52,
+   "id": 69,
    "panels": [],
    "title": "Mamba SSM · GPU 状态池与主机缓存",
    "type": "row"
@@ -4801,9 +6411,9 @@
     "h": 5,
     "w": 12,
     "x": 0,
-    "y": 157
+    "y": 193
    },
-   "id": 53,
+   "id": 70,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -4869,9 +6479,9 @@
     "h": 5,
     "w": 12,
     "x": 12,
-    "y": 157
+    "y": 193
    },
-   "id": 54,
+   "id": 71,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -4977,9 +6587,9 @@
     "h": 7,
     "w": 12,
     "x": 0,
-    "y": 162
+    "y": 198
    },
-   "id": 55,
+   "id": 72,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -5098,9 +6708,9 @@
     "h": 7,
     "w": 12,
     "x": 12,
-    "y": 162
+    "y": 198
    },
-   "id": 56,
+   "id": 73,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -5157,9 +6767,9 @@
     "h": 1,
     "w": 24,
     "x": 0,
-    "y": 169
+    "y": 205
    },
-   "id": 57,
+   "id": 74,
    "panels": [],
    "title": "HiCache · GPU → 本地主机 DRAM（L2）",
    "type": "row"
@@ -5231,9 +6841,9 @@
     "h": 7,
     "w": 12,
     "x": 0,
-    "y": 170
+    "y": 206
    },
-   "id": 58,
+   "id": 75,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -5351,9 +6961,9 @@
     "h": 7,
     "w": 12,
     "x": 12,
-    "y": 170
+    "y": 206
    },
-   "id": 59,
+   "id": 76,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -5510,9 +7120,9 @@
     "h": 7,
     "w": 12,
     "x": 0,
-    "y": 177
+    "y": 213
    },
-   "id": 60,
+   "id": 77,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -5617,9 +7227,9 @@
     "h": 7,
     "w": 12,
     "x": 12,
-    "y": 177
+    "y": 213
    },
-   "id": 61,
+   "id": 78,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -5724,9 +7334,9 @@
     "h": 7,
     "w": 12,
     "x": 12,
-    "y": 184
+    "y": 220
    },
-   "id": 62,
+   "id": 79,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -5770,9 +7380,9 @@
     "h": 1,
     "w": 24,
     "x": 0,
-    "y": 191
+    "y": 227
    },
-   "id": 63,
+   "id": 80,
    "panels": [],
    "title": "采集与调度",
    "type": "row"
@@ -5844,9 +7454,9 @@
     "h": 7,
     "w": 12,
     "x": 0,
-    "y": 192
+    "y": 228
    },
-   "id": 64,
+   "id": 81,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -5951,9 +7561,9 @@
     "h": 7,
     "w": 12,
     "x": 12,
-    "y": 192
+    "y": 228
    },
-   "id": 65,
+   "id": 82,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -6058,9 +7668,9 @@
     "h": 7,
     "w": 12,
     "x": 0,
-    "y": 199
+    "y": 235
    },
-   "id": 66,
+   "id": 83,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -6120,9 +7730,9 @@
     "h": 7,
     "w": 12,
     "x": 12,
-    "y": 199
+    "y": 235
    },
-   "id": 67,
+   "id": 84,
    "options": {
     "code": {
      "language": "plaintext",
@@ -6155,6 +7765,6 @@
  "timezone": "browser",
  "title": "Qwen3.8-27B-FP8 推理监控",
  "uid": "qwen38-deploy",
- "version": 1,
+ "version": 2,
  "weekStart": "monday"
 }
