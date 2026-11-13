@@ -16,12 +16,12 @@
   },
   "ttl": {
     "enabled": true,
-    "status": "v0.2.0-rc1：5m / 1h 两档，默认 5m；适配层为 compat/qwen_ttl",
+    "status": "v0.2.0：5m / 1h 两档，默认 5m；适配层为 compat/qwen_ttl",
     "keep_seconds": 7200
   },
   "l3": {
     "enabled": true,
-    "status": "v0.2.0-rc1：仅写入租约有效的 1h 档，L2 淘汰队尾触发，受写入预算限制",
+    "status": "v0.2.0：仅写入租约有效的 1h 档，L2 淘汰队尾触发，受写入预算限制",
     "cache_format": "qwen38-v020-file-v1",
     "args": {
       "hicache-storage-backend": "file",
@@ -36,8 +36,8 @@
     },
     "endurance_dwpd": 1,
     "disk_share": 0.5,
-    "kv_bytes_per_token": 140000,
+    "kv_bytes_per_token": 200000,
     "burst_seconds": 600,
-    "sizing": "每日写入预算 = endurance_dwpd × 磁盘容量 × disk_share；写入速率上限(token/s) = 预算 / 86400 / kv_bytes_per_token；每 rank 配额 = 预算 × keep_seconds / 86400 / tp-size。kv_bytes_per_token 为 8 个 rank 合计（由主机 KV 池 24.81 GB / 1425344 token 推算）。"
+    "sizing": "每日写入预算 = endurance_dwpd × 磁盘容量 × disk_share；写入速率上限(token/s) = 预算 / 86400 / kv_bytes_per_token；每 rank 配额 = 预算 × keep_seconds / 86400 / tp-size。kv_bytes_per_token 为 8 个 rank 合计在 L3 上的实测值（170–240 KB，含状态层）。"
   }
 }

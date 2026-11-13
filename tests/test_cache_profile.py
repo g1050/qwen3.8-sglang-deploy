@@ -28,7 +28,7 @@ class CacheProfile(unittest.TestCase):
         extra = json.loads(args['hicache-storage-backend-extra-config'])
         self.assertEqual(extra['file_storage_path'], record['container_storage_dir'])
         self.assertEqual(record['l3_daily_budget_gb'], 1750)
-        self.assertAlmostEqual(float(env['QWEN_TTL_L3_TOKENS_PER_SECOND']), 1.75e12 / 86400 / 140000, places=2)
+        self.assertAlmostEqual(float(env['QWEN_TTL_L3_TOKENS_PER_SECOND']), 1.75e12 / 86400 / PROFILE['l3']['kv_bytes_per_token'], places=2)
         self.assertEqual(extra['max_size'], f'{int(1.75e12 * 7200 / 86400 / 8) // 2 ** 20}Mi')
         _, _, changed = apply_profile(CFG, {**CFG['args'], 'tp-size': 4}, CFG['env'], PROFILE, memory_gb=503, disk_bytes=3.5e12)
         self.assertNotEqual(record['namespace'], changed['namespace'])

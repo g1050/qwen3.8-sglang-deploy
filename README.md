@@ -1,6 +1,6 @@
 # Qwen3.8-27B-FP8 部署管理
 
-**v0.2.0-rc1：** 在 v0.1.0 基础上增加 Prompt Cache TTL（5m / 1h，默认 5m，字段与 Kimi 官方端点对照校准）和按 TTL 门控的 L3，默认全部开启；8 并发性能与 v0.1.0 baseline 持平（−0.6% / −1.0%）。说明见 [docs/ttl-v020.md](docs/ttl-v020.md)，结果见 [results/README.md](results/README.md)。
+**v0.2.0：** 在 v0.1.0 基础上增加 Prompt Cache TTL（5m / 1h，默认 5m，字段与 Kimi 官方端点对照校准）和按 TTL 门控的 L3，默认全部开启；8 并发性能与 v0.1.0 baseline 持平（−0.6% / −1.0%）。设计见 [docs/design/ttl-plan1.md](docs/design/ttl-plan1.md)，开发文档见 [docs/ttl-v020.md](docs/ttl-v020.md)，结果见 [results/README.md](results/README.md)。
 
 **v0.1.0：** 本机 8×RTX 5090 上的 SGLang 0.5.20 服务，模型名 `Qwen3.8-27B-FP8`，端口 8000。默认服务为真实解码，**TTL 与 L3 默认关闭**，L2 主机内存缓存按内存自动定容（本机每 rank 47 GB）。压测使用独立的 `performance` 配置（原生 MTP + 模拟接受率），结果见 [results/README.md](results/README.md)，监控见 [docs/monitoring.md](docs/monitoring.md)。
 
@@ -19,7 +19,7 @@
 
 ## 缓存分层
 
-`config/cache.json` 默认：L2 按内存自动定容（本机每 rank 47 GB）；TTL 开启（5m / 1h，留存上限 2 小时）；L3 开启，只接收租约有效的 1h 档，配额和写入速率按磁盘寿命预算计算（本机每 rank 约 19 GB、159 token/s）。关闭 TTL 需同时关闭 L3。详见 [docs/ttl-v020.md](docs/ttl-v020.md)。
+`config/cache.json` 默认：L2 按内存自动定容（本机每 rank 47 GB）；TTL 开启（5m / 1h，留存上限 2 小时）；L3 开启，只接收租约有效的 1h 档，配额和写入速率按磁盘寿命预算计算（本机每 rank 约 19 GB、约 111 token/s）。关闭 TTL 需同时关闭 L3。详见 [docs/ttl-v020.md](docs/ttl-v020.md)。
 
 ## 在本机操作
 
