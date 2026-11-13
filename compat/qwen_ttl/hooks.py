@@ -26,6 +26,9 @@ class State:
         self.page_size = int(os.environ.get('QWEN_TTL_BLOCK_TOKENS', '256'))
         self.counters = dict.fromkeys(COUNTERS, 0)
         self.core = None
+        self.host_state_pool = None
+        self.state_component = None
+        self.state_pool_name = None
         self.cache = None
         # L3 (file) tier: only valid 1h leases are written, at the L2 eviction tail, within a token budget.
         self.l3_rate = float(os.environ.get('QWEN_TTL_L3_TOKENS_PER_SECOND', '0'))
@@ -52,6 +55,10 @@ class Metrics:
         self.tokens = Counter('qwen_ttl_tokens', 'Prompt tokens by TTL accounting class', ['kind'])
         self.requests = Counter('qwen_ttl_requests', 'Admitted requests by requested tier', ['tier'])
         self.seconds = Counter('qwen_ttl_overhead_seconds', 'Scheduler time spent in TTL bookkeeping (rank 0)', ['part'])
+        self.evictions = Counter('qwen_ttl_evictions', 'Evicted KV tokens / state slots by pool, tier and lease state',
+                                 ['pool', 'layer', 'lease'])
+        self.host_states = Gauge('qwen_ttl_host_state_slots', 'Host (L2) state-pool slots', ['state'],
+                                 multiprocess_mode='livesum')
         self.rows = Gauge('qwen_ttl_lease_rows', 'Lease table rows', multiprocess_mode='livesum')
         self.idle = Histogram('qwen_ttl_idle_seconds', 'Idle time of a reused prefix when it is used again', ['kind'],
                               buckets=(10, 30, 60, 120, 300, 600, 1200, 1800, 3600, 5400, 7200))
@@ -67,6 +74,16 @@ class Metrics:
         if idle is not None and physical:
             self.idle.labels('hit' if usage['read'] else 'expired_reuse').observe(idle)
         self.rows.set(len(STATE.table.rows))
+        pool = STATE.host_state_pool
+        if pool is None and STATE.state_pool_name is not None:
+            # The host pools are attached after the cache is constructed.
+            group = getattr(STATE.cache, 'host_pool_group', None)
+            if group is not None and STATE.state_pool_name in group.entry_map:
+                pool = STATE.host_state_pool = group.get_pool(STATE.state_pool_name)
+        if pool is not None:
+            total = pool.size
+            self.host_states.labels('total').set(total)
+            self.host_states.labels('used').set(total - pool.available_size())
 
 
 METRICS = [None]
@@ -79,12 +96,47 @@ class TTLStrategy:
         self.base = base
 
     def get_priority(self, node):
-        tag, now = getattr(node, '_ttl', None), STATE.now
-        if tag is None:
-            # First seen by an eviction pass shortly after creation: start a default lease clock.
-            tag = node._ttl = (now, now + DEFAULT_TTL, DEFAULT_TTL)
-        rank = 0 if now >= tag[0] + STATE.table.keep else 2 if now < tag[1] else 1
-        return rank, self.base.get_priority(node)
+        return lease_rank(node), self.base.get_priority(node)
+
+
+def lease_rank(node):
+    """0 beyond retention, 1 expired but retained, 2 valid lease."""
+    tag, now = getattr(node, '_ttl', None), STATE.now
+    if tag is None:
+        # First seen by an eviction pass shortly after creation: start a default lease clock.
+        tag = node._ttl = (now, now + DEFAULT_TTL, DEFAULT_TTL)
+    return 0 if now >= tag[0] + STATE.table.keep else 2 if now < tag[1] else 1
+
+
+LEASE_NAMES = ('beyond', 'expired', 'valid')
+STATE_ORDER = os.environ.get('QWEN_TTL_STATE_ORDER', '1') != '0'   # diagnosis: 0 restores the native state-pool LRU
+STATE_WINDOW = 4096    # state-pool LRU entries examined ahead of one eviction pass (the whole pool in practice)
+
+
+def reorder_tail(lru, window=STATE_WINDOW):
+    """Make the LRU tail of a state pool evict by lease rank first, LRU order within a rank.
+
+    The state pools (Mamba) evict straight off an LRU list instead of asking the eviction
+    strategy. Rewriting the order of the tail window gives them the same priority as KV
+    without touching the native walk. Returns the window in eviction order.
+    """
+    if lru.mid is not None or not STATE_ORDER:   # session-partitioned lists keep their native order
+        return []
+    pt, node, nodes = lru._pt, lru.tail.lru_prev[lru._pt], []
+    while node is not lru.head and len(nodes) < window:
+        nodes.append(node)
+        node = node.lru_prev[pt]
+    ranks = [lease_rank(n) for n in nodes]
+    if all(a <= b for a, b in zip(ranks, ranks[1:])):
+        return nodes
+    anchor = node                  # first entry beyond the window, towards the MRU end
+    order = [n for _, _, n in sorted(zip(ranks, range(len(nodes)), nodes), key=lambda item: item[:2])]
+    for n in nodes:
+        lru._remove_node(n)
+    for n in reversed(order):      # the first to evict ends up next to the tail
+        lru._add_node_after(anchor, n)
+        anchor = n
+    return order
 
 
 def tag_path(node_id, now, expires, tier):
@@ -152,23 +204,27 @@ def backup_tail(core, num_tokens):
     for node in heapq.nsmallest(256, core.evictable_host_leaves, key=core.eviction_strategy.get_priority):
         if covered >= TAIL_WINDOW:
             break
-        tokens = len(node.key)
-        covered += tokens
-        tag = node._ttl
-        if tag[2] != 3600 or tag[1] - now <= 300 or getattr(node, '_ttl_l3', False):
-            continue
-        if not l3_take(tokens):
-            count('l3_dropped', tokens)
-            continue
-        STATE.l3_writing = True
-        try:
-            STATE.cache.write_backup_storage(node.id)
-        finally:
-            STATE.l3_writing = False
-        node._ttl_l3 = True
-        remember_storage(node)
-        count('l3_written', tokens)
+        covered += len(node.key)
+        write_tail_node(node)
     spend('tail_scan', started)
+
+
+def write_tail_node(node):
+    """Write one host leaf to L3 if it holds a valid 1h lease and the budget allows."""
+    tag, tokens = getattr(node, '_ttl', None), len(node.key)
+    if tag is None or tag[2] != 3600 or tag[1] - STATE.now <= 300 or getattr(node, '_ttl_l3', False):
+        return
+    if not l3_take(tokens):
+        count('l3_dropped', tokens)
+        return
+    STATE.l3_writing = True
+    try:
+        STATE.cache.write_backup_storage(node.id)
+    finally:
+        STATE.l3_writing = False
+    node._ttl_l3 = True
+    remember_storage(node)
+    count('l3_written', tokens)
 
 
 def spend(part, started):
@@ -267,7 +323,8 @@ def admit(req):
         METRICS[0].record(req, usage, physical, idle)
 
 
-def install_classes(cache_class, req_class, batch_class, scheduler_class, streamer_class, core_class, base_component):
+def install_classes(cache_class, req_class, batch_class, scheduler_class, streamer_class, core_class, base_component,
+                    state_class=None, state_component=None, state_pool_name=None, full_class=None):
     if getattr(cache_class, '_qwen_ttl_hook', False):
         return
     original_init = req_class.__init__
@@ -300,6 +357,9 @@ def install_classes(cache_class, req_class, batch_class, scheduler_class, stream
             self.tree_core.eviction_strategy = TTLStrategy(self.tree_core.eviction_strategy)
             STATE.core = self.tree_core
             STATE.cache = self
+            if state_component in self.tree_core.components_by_type:
+                STATE.state_component = state_component
+                STATE.state_pool_name = state_pool_name
         import torch.distributed as dist
         if self.tp_world_size == 1 or dist.get_rank(self.tp_group) == 0:
             try:
@@ -401,10 +461,62 @@ def install_classes(cache_class, req_class, batch_class, scheduler_class, stream
 
     @wraps(original_drive)
     def drive(self, component_type, num_tokens):
-        if (STATE.l3_rate and self.enable_storage and component_type == base_component
-                and STATE.now - STATE.last_1h < STATE.table.keep):
-            backup_tail(self, num_tokens)
+        storage = STATE.l3_rate and self.enable_storage and STATE.now - STATE.last_1h < STATE.table.keep
+        if component_type == base_component:
+            if storage:
+                backup_tail(self, num_tokens)
+        elif component_type == STATE.state_component:
+            # State-pool pressure: same lease priority as KV, and the same L3 rescue for 1h leaves.
+            started = time.perf_counter()
+            nodes = reorder_tail(self.host_lru_lists[component_type])
+            if storage:
+                reach = 0
+                for node in nodes:
+                    if reach >= 2 * num_tokens:
+                        break
+                    reach += 1
+                    if node in self.evictable_host_leaves:
+                        write_tail_node(node)
+            spend('state_tail', started)
         return original_drive(self, component_type, num_tokens)
+
+    def counted(component_class, pool, per_token):
+        """Count what each pool gives up, by tier and by the lease state of the evicted node."""
+        original = component_class.evict_component
+
+        @wraps(original)
+        def evict_component(self, node, *args, **kwargs):
+            metrics = METRICS[0]
+            if metrics is None:
+                return original(self, node, *args, **kwargs)
+            data = node.component_data[self.component_type]
+            had_device, had_host = data.value is not None, data.host_value is not None
+            result = original(self, node, *args, **kwargs)
+            amount, lease = (len(node.key) if per_token else 1), LEASE_NAMES[lease_rank(node)]
+            if had_device and data.value is None:
+                metrics.evictions.labels(pool, 'device', lease).inc(amount)
+            if had_host and data.host_value is None:
+                metrics.evictions.labels(pool, 'host', lease).inc(amount)
+            return result
+
+        component_class.evict_component = evict_component
+
+    if full_class is not None:
+        counted(full_class, 'kv', True)
+    if state_class is not None:
+        counted(state_class, 'mamba', False)
+
+    if state_class is not None:
+        original_state_start = state_class._evict_device_start
+
+        @wraps(original_state_start)
+        def state_start(self, request_cnt):
+            started = time.perf_counter()
+            reorder_tail(self.tree_core.lru_lists[self.component_type])
+            spend('state_order', started)
+            return original_state_start(self, request_cnt)
+
+        state_class._evict_device_start = state_start
 
     @wraps(original_details)
     def details(self, req):
@@ -437,5 +549,10 @@ def install():
                     if isinstance(value, type) and 'get_cached_tokens_details' in vars(value))
     from sglang.srt.mem_cache.unified_cache.component_type import BASE_COMPONENT_TYPE
     from sglang.srt.mem_cache.unified_cache.unified_tree_core import UnifiedTreeCore
-    install_classes(UnifiedRadixCache, Req, ScheduleBatch, Scheduler, streamer, UnifiedTreeCore, BASE_COMPONENT_TYPE)
+    from sglang.srt.mem_cache.unified_cache.component_type import ComponentType
+    from sglang.srt.mem_cache.unified_cache.components.full import FullComponent
+    from sglang.srt.mem_cache.unified_cache.components.mamba import MambaComponent
+    from sglang.srt.mem_cache.hicache_storage import PoolName
+    install_classes(UnifiedRadixCache, Req, ScheduleBatch, Scheduler, streamer, UnifiedTreeCore, BASE_COMPONENT_TYPE,
+                    MambaComponent, ComponentType.MAMBA, PoolName.MAMBA, FullComponent)
     LOG.info('qwen_ttl hooks installed (keep=%ss)', STATE.table.keep)

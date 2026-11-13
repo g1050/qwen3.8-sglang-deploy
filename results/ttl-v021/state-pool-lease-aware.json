@@ -1,0 +1,106 @@
+{
+ "phases": [
+  {
+   "phase": "write B (1h)",
+   "billed_read": 204800,
+   "input": 20888,
+   "physical": 173056,
+   "read": 204800,
+   "unbacked_read": 31744,
+   "write_1h": 204800,
+   "host_state_slots": [
+    0.0,
+    148.0
+   ],
+   "pools": {
+    "gpu_kv_free": 605760,
+    "gpu_state_free": 386,
+    "host_kv_used": 31744,
+    "host_kv_total": 192896
+   }
+  },
+  {
+   "phase": "write A (5m)",
+   "billed_read": 204800,
+   "input": 20708,
+   "physical": 183296,
+   "read": 204800,
+   "unbacked_read": 21504,
+   "write_5m": 204800,
+   "host_state_slots": [
+    0.0,
+    148.0
+   ],
+   "pools": {
+    "gpu_kv_free": 399616,
+    "gpu_state_free": 165,
+    "host_kv_used": 53248,
+    "host_kv_total": 192896
+   }
+  },
+  {
+   "phase": "fill C (5m), A expired",
+   "billed_read": 307200,
+   "evict mamba device expired": 165,
+   "input": 30876,
+   "physical": 276480,
+   "read": 307200,
+   "unbacked_read": 30720,
+   "write_5m": 307200,
+   "host_state_slots": [
+    0.0,
+    148.0
+   ],
+   "pools": {
+    "gpu_kv_free": 244032,
+    "gpu_state_free": 0,
+    "host_kv_used": 83968,
+    "host_kv_total": 192896
+   }
+  },
+  {
+   "phase": "replay B (valid)",
+   "billed_read": 204800,
+   "evict mamba device expired": 1,
+   "input": 10444,
+   "physical": 204800,
+   "read": 204800,
+   "host_state_slots": [
+    31.0,
+    148.0
+   ],
+   "pools": {
+    "gpu_kv_free": 244160,
+    "gpu_state_free": 1,
+    "host_kv_used": 85952,
+    "host_kv_total": 192896
+   }
+  },
+  {
+   "phase": "replay A (expired)",
+   "billed_read": 0,
+   "evict mamba device expired": 56,
+   "evict mamba device valid": 143,
+   "input": 10354,
+   "write_5m": 204800,
+   "host_state_slots": [
+    52.0,
+    148.0
+   ],
+   "pools": {
+    "gpu_kv_free": 223936,
+    "gpu_state_free": 0,
+    "host_kv_used": 85952,
+    "host_kv_total": 192896
+   }
+  }
+ ],
+ "verdict": {
+  "physical_reuse_B_valid": 204800,
+  "physical_reuse_A_expired": 0,
+  "evictions": {
+   "evict mamba device expired": 222,
+   "evict mamba device valid": 143
+  }
+ }
+}

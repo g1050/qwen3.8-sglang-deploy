@@ -1,0 +1,108 @@
+{
+ "phases": [
+  {
+   "phase": "write B (1h)",
+   "billed_read": 204800,
+   "input": 20206,
+   "physical": 187392,
+   "read": 204800,
+   "unbacked_read": 17408,
+   "write_1h": 204800,
+   "host_state_slots": [
+    0.0,
+    148.0
+   ],
+   "pools": {
+    "gpu_kv_free": 606656,
+    "gpu_state_free": 400,
+    "host_kv_used": 17408,
+    "host_kv_total": 192896
+   }
+  },
+  {
+   "phase": "write A (5m)",
+   "billed_read": 204800,
+   "input": 21126,
+   "physical": 176128,
+   "read": 204800,
+   "unbacked_read": 28672,
+   "write_5m": 204800,
+   "host_state_slots": [
+    0.0,
+    148.0
+   ],
+   "pools": {
+    "gpu_kv_free": 400064,
+    "gpu_state_free": 172,
+    "host_kv_used": 46080,
+    "host_kv_total": 192896
+   }
+  },
+  {
+   "phase": "fill C (5m), A expired",
+   "billed_read": 307200,
+   "evict mamba device expired": 75,
+   "evict mamba device valid": 90,
+   "input": 31260,
+   "physical": 270336,
+   "read": 307200,
+   "unbacked_read": 36864,
+   "write_5m": 307200,
+   "host_state_slots": [
+    0.0,
+    148.0
+   ],
+   "pools": {
+    "gpu_kv_free": 245120,
+    "gpu_state_free": 1,
+    "host_kv_used": 82944,
+    "host_kv_total": 192896
+   }
+  },
+  {
+   "phase": "replay B (valid)",
+   "billed_read": 204800,
+   "evict mamba device expired": 85,
+   "input": 10103,
+   "physical": 117760,
+   "read": 204800,
+   "unbacked_read": 87040,
+   "host_state_slots": [
+    17.0,
+    148.0
+   ],
+   "pools": {
+    "gpu_kv_free": 238400,
+    "gpu_state_free": 1,
+    "host_kv_used": 83712,
+    "host_kv_total": 192896
+   }
+  },
+  {
+   "phase": "replay A (expired)",
+   "billed_read": 0,
+   "evict mamba device expired": 69,
+   "evict mamba device valid": 130,
+   "input": 10563,
+   "write_5m": 204800,
+   "host_state_slots": [
+    45.0,
+    148.0
+   ],
+   "pools": {
+    "gpu_kv_free": 210496,
+    "gpu_state_free": 0,
+    "host_kv_used": 83712,
+    "host_kv_total": 192896
+   }
+  }
+ ],
+ "verdict": {
+  "physical_reuse_B_valid": 117760,
+  "physical_reuse_A_expired": 0,
+  "evictions": {
+   "evict mamba device expired": 229,
+   "evict mamba device valid": 220
+  }
+ }
+}
