@@ -46,6 +46,7 @@ class LRU:
 class ReorderTail(unittest.TestCase):
     def setUp(self):
         hooks.STATE.now = 1000.0
+        hooks.STATE_ORDER = True
         self.valid, self.expired, self.beyond = (990, 1500, 3600), (600, 900, 300), (-7000, -6700, 300)
 
     def lru(self, spec):
@@ -78,6 +79,15 @@ class ReorderTail(unittest.TestCase):
     def test_session_partitioned_list_keeps_native_order(self):
         lru = self.lru(['v1', 'e1'])
         lru.mid = object()
+        self.assertEqual(hooks.reorder_tail(lru), [])
+        self.assertEqual(lru.eviction_order(), ['v1', 'e1'])
+
+
+class ReorderDefault(unittest.TestCase):
+    def test_disabled_unless_requested(self):
+        hooks.STATE_ORDER = False
+        hooks.STATE.now = 1000.0
+        lru = LRU([Node('v1', (990, 1500, 3600)), Node('e1', (600, 900, 300))])
         self.assertEqual(hooks.reorder_tail(lru), [])
         self.assertEqual(lru.eviction_order(), ['v1', 'e1'])
 

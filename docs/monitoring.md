@@ -1,6 +1,6 @@
 # Grafana 监控
 
-看板 `Qwen3.8-27B-FP8 推理监控`（uid `qwen38-deploy`）由 `monitoring/build_dashboard.py` 从 Kimi-K3.1 Pro 参考看板（`reference/grafana-kimi-k31-reference.json`）重建，布局一致，共 84 个面板（含 TTL 与 L3 两行）。
+看板 `Qwen3.8-27B-FP8 推理监控`（uid `qwen38-deploy`）由 `monitoring/build_dashboard.py` 从 Kimi-K3.1 Pro 参考看板（`reference/grafana-kimi-k31-reference.json`）重建，布局一致，共 88 个面板（含 TTL、淘汰、L3 三行）。
 
 ```bash
 python3 monitoring/build_dashboard.py --install /data/models/monitoring/grafana/dashboards

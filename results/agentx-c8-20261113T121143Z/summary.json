@@ -1,0 +1,189 @@
+{
+  "run": "agentx-c8-20261113T121143Z",
+  "concurrency": 8,
+  "duration": 3600,
+  "exit_codes": {
+    "benchmark": 0,
+    "aggregate": 0,
+    "validate": 0,
+    "distributions": 0,
+    "server_metrics": 0
+  },
+  "请求吞吐 req/s": 0.09834698570167927,
+  "units": {
+    "请求吞吐 req/s": "requests/sec",
+    "输出吞吐 tok/s": "tokens/sec",
+    "TTFT 平均 s": "ms",
+    "TTFT P50 s": "ms",
+    "TTFT P90 s": "ms",
+    "TTFT P99 s": "ms",
+    "ITL 平均 ms": "ms",
+    "ITL P50 ms": "ms",
+    "ITL P90 ms": "ms",
+    "ITL P99 ms": "ms",
+    "E2E 延迟 平均 s": "ms",
+    "E2E 延迟 P90 s": "ms",
+    "单用户输出速度 平均 tok/s": "tokens/sec/user",
+    "输入长度 平均 tok": "tokens",
+    "输出长度 平均 tok": "tokens",
+    "缓存读取占比 %": "%"
+  },
+  "输出吞吐 tok/s": 84.34039146914094,
+  "TTFT 平均 s": 30.10447563655182,
+  "TTFT P50 s": 13.575424369999999,
+  "TTFT P90 s": 79.74581843420005,
+  "TTFT P99 s": 249.7243678987998,
+  "ITL 平均 ms": 74.91475938065362,
+  "ITL P50 ms": 71.1600968433735,
+  "ITL P90 ms": 85.08627188061372,
+  "ITL P99 ms": 134.55591590127554,
+  "E2E 延迟 平均 s": 92.17996202102802,
+  "E2E 延迟 P90 s": 171.92875548480018,
+  "单用户输出速度 平均 tok/s": 13.68801518947899,
+  "输入长度 平均 tok": 92636.64425770308,
+  "输出长度 平均 tok": 857.5798319327731,
+  "缓存读取占比 %": 86.71538043188043,
+  "request_count": 357.0,
+  "total_usage_prompt_tokens": 33071282.0,
+  "total_usage_prompt_cache_read_tokens": 28677888.0,
+  "total_usage_completion_tokens": 306156.0,
+  "total_output_tokens": 306156.0,
+  "benchmark_duration": 3628.241229824,
+  "输入吞吐 tok/s": 9114.962293067882,
+  "error_summary": [],
+  "was_cancelled": false,
+  "upstream_aggregate": {
+    "request_accounting": {
+      "records_total": 447,
+      "records_profiled": 357,
+      "records_dropped_total": 90,
+      "records_warmup_dropped": 90,
+      "records_error_dropped": 0,
+      "error_categories": {}
+    },
+    "request_metrics": {
+      "qps": {
+        "window_seconds": 1,
+        "samples": 3596,
+        "mean": 0.099,
+        "p50": 0.0,
+        "p75": 0.0,
+        "p90": 0.0,
+        "p95": 1,
+        "std": 0.31674
+      },
+      "latency": {
+        "ttft": {
+          "mean": 30.10448,
+          "p50": 13.57542,
+          "p75": 35.76922,
+          "p90": 79.74582,
+          "p95": 104.23843,
+          "std": 46.94488
+        },
+        "e2el": {
+          "mean": 92.17996,
+          "p50": 48.70859,
+          "p75": 90.51138,
+          "p90": 171.92876,
+          "p95": 330.8134,
+          "std": 172.05555
+        },
+        "itl": {
+          "mean": 0.07491,
+          "p50": 0.07116,
+          "p75": 0.07692,
+          "p90": 0.08509,
+          "p95": 0.09091,
+          "std": 0.01674
+        },
+        "tpot": {
+          "mean": 0.07491,
+          "p50": 0.07116,
+          "p75": 0.07692,
+          "p90": 0.08509,
+          "p95": 0.09091,
+          "std": 0.01674
+        },
+        "intvty": {
+          "mean": 13.3485,
+          "p50": 14.05282,
+          "p75": 12.99988,
+          "p90": 11.75278,
+          "p95": 11.00023,
+          "std": 1.72714
+        },
+        "e2e_norm_intvty": {
+          "mean": 4.53213,
+          "p50": 9.5288,
+          "p75": 5.63749,
+          "p90": 2.77875,
+          "p95": 1.53559,
+          "std": 4.03723
+        },
+        "full_response_itl": {
+          "mean": 0.07492,
+          "p50": 0.07116,
+          "p75": 0.07692,
+          "p90": 0.08509,
+          "p95": 0.09091,
+          "std": 0.01674
+        },
+        "full_response_intvty": {
+          "mean": 13.34806,
+          "p50": 14.05278,
+          "p75": 12.99981,
+          "p90": 11.7527,
+          "p95": 11.00017,
+          "std": 1.72707
+        }
+      },
+      "tokens": {
+        "input": {
+          "mean": 92636.64426,
+          "p50": 96739,
+          "p75": 112189,
+          "p90": 135941.4,
+          "p95": 151203.2,
+          "std": 36602.58851
+        },
+        "output_actual": {
+          "mean": 857.57983,
+          "p50": 341,
+          "p75": 573,
+          "p90": 1180.8,
+          "p95": 2756.6,
+          "std": 2337.29943
+        },
+        "output_expected": {
+          "mean": 2118.54682,
+          "p50": 825,
+          "p75": 1844,
+          "p90": 5340,
+          "p95": 9452.2,
+          "std": 4054.79442
+        }
+      },
+      "throughput": {
+        "input": {
+          "tokens_per_second": 9114.96229
+        },
+        "output": {
+          "tokens_per_second": 84.38138
+        },
+        "total": {
+          "tokens_per_second": 9199.34367
+        },
+        "duration_seconds": 3628.24123,
+        "per_gpu": {
+          "total_tput_tps": 1149.91796,
+          "output_tput_tps": 10.54767,
+          "input_tput_tps": 1139.37029
+        }
+      },
+      "cache": {
+        "theoretical_cache_hit_rate": 0.94547
+      }
+    }
+  }
+}

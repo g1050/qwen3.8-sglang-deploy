@@ -1665,6 +1665,353 @@
     "y": 31
    },
    "id": 22,
+   "title": "淘汰 · KV 池与状态池",
+   "type": "row",
+   "description": ""
+  },
+  {
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "description": "kv 单位为 token/s，mamba 为状态槽/s。valid 表示被淘汰时租约仍有效。只有 mamba 在动而 kv 不动，说明先见底的是状态池。",
+   "fieldConfig": {
+    "defaults": {
+     "color": {
+      "mode": "palette-classic"
+     },
+     "custom": {
+      "axisBorderShow": false,
+      "axisCenteredZero": false,
+      "axisColorMode": "text",
+      "axisLabel": "",
+      "axisPlacement": "auto",
+      "barAlignment": 0,
+      "barWidthFactor": 0.6,
+      "drawStyle": "line",
+      "fillOpacity": 10,
+      "gradientMode": "none",
+      "hideFrom": {
+       "legend": false,
+       "tooltip": false,
+       "viz": false
+      },
+      "insertNulls": false,
+      "lineInterpolation": "linear",
+      "lineWidth": 2,
+      "pointSize": 5,
+      "scaleDistribution": {
+       "type": "linear"
+      },
+      "showPoints": "never",
+      "spanNulls": false,
+      "stacking": {
+       "group": "A",
+       "mode": "none"
+      },
+      "thresholdsStyle": {
+       "mode": "off"
+      }
+     },
+     "mappings": [],
+     "min": 0,
+     "noValue": "无样本 / 无数据",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green"
+       },
+       {
+        "color": "red",
+        "value": 80
+       }
+      ]
+     },
+     "unit": "short"
+    },
+    "overrides": []
+   },
+   "gridPos": {
+    "h": 7,
+    "w": 8,
+    "x": 0,
+    "y": 32
+   },
+   "id": 23,
+   "interval": "2s",
+   "maxDataPoints": 600,
+   "options": {
+    "legend": {
+     "calcs": [
+      "lastNotNull",
+      "max"
+     ],
+     "displayMode": "table",
+     "placement": "bottom",
+     "showLegend": true
+    },
+    "tooltip": {
+     "hideZeros": false,
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "pluginVersion": "11.6.0",
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "editorMode": "code",
+     "expr": "sum by (pool, lease) (rate(qwen_ttl_evictions_total{job=\"sglang\",service=\"qwen38\",layer=\"device\"}[$__rate_interval]))",
+     "instant": false,
+     "interval": "2s",
+     "legendFormat": "{{pool}} · {{lease}}",
+     "range": true,
+     "refId": "A"
+    }
+   ],
+   "title": "GPU 淘汰 · 按池和租约状态",
+   "type": "timeseries"
+  },
+  {
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "description": "kv 单位为 token/s，mamba 为状态槽/s。",
+   "fieldConfig": {
+    "defaults": {
+     "color": {
+      "mode": "palette-classic"
+     },
+     "custom": {
+      "axisBorderShow": false,
+      "axisCenteredZero": false,
+      "axisColorMode": "text",
+      "axisLabel": "",
+      "axisPlacement": "auto",
+      "barAlignment": 0,
+      "barWidthFactor": 0.6,
+      "drawStyle": "line",
+      "fillOpacity": 10,
+      "gradientMode": "none",
+      "hideFrom": {
+       "legend": false,
+       "tooltip": false,
+       "viz": false
+      },
+      "insertNulls": false,
+      "lineInterpolation": "linear",
+      "lineWidth": 2,
+      "pointSize": 5,
+      "scaleDistribution": {
+       "type": "linear"
+      },
+      "showPoints": "never",
+      "spanNulls": false,
+      "stacking": {
+       "group": "A",
+       "mode": "none"
+      },
+      "thresholdsStyle": {
+       "mode": "off"
+      }
+     },
+     "mappings": [],
+     "min": 0,
+     "noValue": "无样本 / 无数据",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green"
+       },
+       {
+        "color": "red",
+        "value": 80
+       }
+      ]
+     },
+     "unit": "short"
+    },
+    "overrides": []
+   },
+   "gridPos": {
+    "h": 7,
+    "w": 8,
+    "x": 8,
+    "y": 32
+   },
+   "id": 24,
+   "interval": "2s",
+   "maxDataPoints": 600,
+   "options": {
+    "legend": {
+     "calcs": [
+      "lastNotNull",
+      "max"
+     ],
+     "displayMode": "table",
+     "placement": "bottom",
+     "showLegend": true
+    },
+    "tooltip": {
+     "hideZeros": false,
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "pluginVersion": "11.6.0",
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "editorMode": "code",
+     "expr": "sum by (pool, lease) (rate(qwen_ttl_evictions_total{job=\"sglang\",service=\"qwen38\",layer=\"host\"}[$__rate_interval]))",
+     "instant": false,
+     "interval": "2s",
+     "legendFormat": "{{pool}} · {{lease}}",
+     "range": true,
+     "refId": "A"
+    }
+   ],
+   "title": "主机（L2）淘汰 · 按池和租约状态",
+   "type": "timeseries"
+  },
+  {
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "description": "主机 Mamba 状态池（引擎不导出，由 TTL 适配层采样）。GPU 状态槽见上方 Mamba 面板。",
+   "fieldConfig": {
+    "defaults": {
+     "color": {
+      "mode": "palette-classic"
+     },
+     "custom": {
+      "axisBorderShow": false,
+      "axisCenteredZero": false,
+      "axisColorMode": "text",
+      "axisLabel": "",
+      "axisPlacement": "auto",
+      "barAlignment": 0,
+      "barWidthFactor": 0.6,
+      "drawStyle": "line",
+      "fillOpacity": 10,
+      "gradientMode": "none",
+      "hideFrom": {
+       "legend": false,
+       "tooltip": false,
+       "viz": false
+      },
+      "insertNulls": false,
+      "lineInterpolation": "linear",
+      "lineWidth": 2,
+      "pointSize": 5,
+      "scaleDistribution": {
+       "type": "linear"
+      },
+      "showPoints": "never",
+      "spanNulls": false,
+      "stacking": {
+       "group": "A",
+       "mode": "none"
+      },
+      "thresholdsStyle": {
+       "mode": "off"
+      }
+     },
+     "mappings": [],
+     "min": 0,
+     "noValue": "无样本 / 无数据",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green"
+       },
+       {
+        "color": "red",
+        "value": 80
+       }
+      ]
+     },
+     "unit": "short"
+    },
+    "overrides": []
+   },
+   "gridPos": {
+    "h": 7,
+    "w": 8,
+    "x": 16,
+    "y": 32
+   },
+   "id": 25,
+   "interval": "2s",
+   "maxDataPoints": 600,
+   "options": {
+    "legend": {
+     "calcs": [
+      "lastNotNull",
+      "max"
+     ],
+     "displayMode": "table",
+     "placement": "bottom",
+     "showLegend": true
+    },
+    "tooltip": {
+     "hideZeros": false,
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "pluginVersion": "11.6.0",
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "editorMode": "code",
+     "expr": "max(qwen_ttl_host_state_slots{job=\"sglang\",service=\"qwen38\",state=\"used\"})",
+     "instant": false,
+     "interval": "2s",
+     "legendFormat": "已用",
+     "range": true,
+     "refId": "A"
+    },
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "editorMode": "code",
+     "expr": "max(qwen_ttl_host_state_slots{job=\"sglang\",service=\"qwen38\",state=\"total\"})",
+     "instant": false,
+     "interval": "2s",
+     "legendFormat": "总量",
+     "range": true,
+     "refId": "B"
+    }
+   ],
+   "title": "主机状态槽占用",
+   "type": "timeseries"
+  },
+  {
+   "collapsed": false,
+   "gridPos": {
+    "h": 1,
+    "w": 24,
+    "x": 0,
+    "y": 39
+   },
+   "id": 26,
    "title": "L3 · 本地 NVMe（仅 1h 档）",
    "type": "row",
    "description": ""
@@ -1736,9 +2083,9 @@
     "h": 7,
     "w": 8,
     "x": 0,
-    "y": 32
+    "y": 40
    },
-   "id": 23,
+   "id": 27,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -1784,6 +2131,19 @@
      "legendFormat": "丢弃 · 写入预算用完",
      "range": true,
      "refId": "B"
+    },
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "editorMode": "code",
+     "expr": "sum(rate(qwen_ttl_tokens_total{job=\"sglang\",service=\"qwen38\",kind=~\"l3_skipped_.*\"}[$__rate_interval]))",
+     "instant": false,
+     "interval": "2s",
+     "legendFormat": "跳过 · 无状态 / 非 1h / 将到期 / 无主机副本",
+     "range": true,
+     "refId": "C"
     }
    ],
    "title": "L3 写入与丢弃",
@@ -1856,9 +2216,9 @@
     "h": 7,
     "w": 8,
     "x": 8,
-    "y": 32
+    "y": 40
    },
-   "id": 24,
+   "id": 28,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -1976,9 +2336,9 @@
     "h": 7,
     "w": 8,
     "x": 16,
-    "y": 32
+    "y": 40
    },
-   "id": 25,
+   "id": 29,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -2096,9 +2456,9 @@
     "h": 7,
     "w": 12,
     "x": 0,
-    "y": 39
+    "y": 47
    },
-   "id": 26,
+   "id": 30,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -2203,9 +2563,9 @@
     "h": 7,
     "w": 12,
     "x": 12,
-    "y": 39
+    "y": 47
    },
-   "id": 27,
+   "id": 31,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -2262,9 +2622,9 @@
     "h": 1,
     "w": 24,
     "x": 0,
-    "y": 46
+    "y": 54
    },
-   "id": 28,
+   "id": 32,
    "panels": [],
    "title": "容量与并发",
    "type": "row"
@@ -2306,9 +2666,9 @@
     "h": 6,
     "w": 6,
     "x": 0,
-    "y": 47
+    "y": 55
    },
-   "id": 29,
+   "id": 33,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -2382,9 +2742,9 @@
     "h": 6,
     "w": 6,
     "x": 6,
-    "y": 47
+    "y": 55
    },
-   "id": 30,
+   "id": 34,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -2458,9 +2818,9 @@
     "h": 6,
     "w": 6,
     "x": 12,
-    "y": 47
+    "y": 55
    },
-   "id": 31,
+   "id": 35,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -2534,9 +2894,9 @@
     "h": 6,
     "w": 6,
     "x": 18,
-    "y": 47
+    "y": 55
    },
-   "id": 32,
+   "id": 36,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -2640,9 +3000,9 @@
     "h": 11,
     "w": 8,
     "x": 0,
-    "y": 53
+    "y": 61
    },
-   "id": 33,
+   "id": 37,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -2787,9 +3147,9 @@
     "h": 11,
     "w": 8,
     "x": 9,
-    "y": 53
+    "y": 61
    },
-   "id": 34,
+   "id": 38,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -2920,9 +3280,9 @@
     "h": 8,
     "w": 8,
     "x": 0,
-    "y": 64
+    "y": 72
    },
-   "id": 35,
+   "id": 39,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -3053,9 +3413,9 @@
     "h": 8,
     "w": 8,
     "x": 8,
-    "y": 64
+    "y": 72
    },
-   "id": 36,
+   "id": 40,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -3186,9 +3546,9 @@
     "h": 8,
     "w": 8,
     "x": 16,
-    "y": 64
+    "y": 72
    },
-   "id": 37,
+   "id": 41,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -3258,9 +3618,9 @@
     "h": 1,
     "w": 24,
     "x": 0,
-    "y": 72
+    "y": 80
    },
-   "id": 38,
+   "id": 42,
    "panels": [],
    "title": "延迟分析 · 引擎观测",
    "type": "row"
@@ -3332,9 +3692,9 @@
     "h": 8,
     "w": 8,
     "x": 0,
-    "y": 73
+    "y": 81
    },
-   "id": 39,
+   "id": 43,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -3465,9 +3825,9 @@
     "h": 8,
     "w": 8,
     "x": 8,
-    "y": 73
+    "y": 81
    },
-   "id": 40,
+   "id": 44,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -3598,9 +3958,9 @@
     "h": 8,
     "w": 8,
     "x": 16,
-    "y": 73
+    "y": 81
    },
-   "id": 41,
+   "id": 45,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -3732,9 +4092,9 @@
     "h": 7,
     "w": 8,
     "x": 0,
-    "y": 81
+    "y": 89
    },
-   "id": 42,
+   "id": 46,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -3839,9 +4199,9 @@
     "h": 7,
     "w": 8,
     "x": 8,
-    "y": 81
+    "y": 89
    },
-   "id": 43,
+   "id": 47,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -3972,9 +4332,9 @@
     "h": 7,
     "w": 24,
     "x": 0,
-    "y": 88
+    "y": 96
    },
-   "id": 44,
+   "id": 48,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -4105,9 +4465,9 @@
     "h": 8,
     "w": 8,
     "x": 16,
-    "y": 95
+    "y": 103
    },
-   "id": 45,
+   "id": 49,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -4151,9 +4511,9 @@
     "h": 1,
     "w": 24,
     "x": 0,
-    "y": 103
+    "y": 111
    },
-   "id": 46,
+   "id": 50,
    "panels": [],
    "title": "长上下文与请求构成",
    "type": "row"
@@ -4225,9 +4585,9 @@
     "h": 7,
     "w": 12,
     "x": 0,
-    "y": 104
+    "y": 112
    },
-   "id": 47,
+   "id": 51,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -4371,9 +4731,9 @@
     "h": 7,
     "w": 12,
     "x": 12,
-    "y": 104
+    "y": 112
    },
-   "id": 48,
+   "id": 52,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -4492,9 +4852,9 @@
     "h": 7,
     "w": 12,
     "x": 0,
-    "y": 111
+    "y": 119
    },
-   "id": 49,
+   "id": 53,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -4639,9 +4999,9 @@
     "h": 7,
     "w": 12,
     "x": 12,
-    "y": 111
+    "y": 119
    },
-   "id": 50,
+   "id": 54,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -4772,9 +5132,9 @@
     "h": 8,
     "w": 8,
     "x": 0,
-    "y": 118
+    "y": 126
    },
-   "id": 51,
+   "id": 55,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -4905,9 +5265,9 @@
     "h": 7,
     "w": 12,
     "x": 12,
-    "y": 118
+    "y": 126
    },
-   "id": 52,
+   "id": 56,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -4983,9 +5343,9 @@
     "h": 9,
     "w": 12,
     "x": 12,
-    "y": 125
+    "y": 133
    },
-   "id": 53,
+   "id": 57,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -5070,9 +5430,9 @@
     "h": 9,
     "w": 12,
     "x": 0,
-    "y": 126
+    "y": 134
    },
-   "id": 54,
+   "id": 58,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -5138,9 +5498,9 @@
     "h": 1,
     "w": 24,
     "x": 0,
-    "y": 135
+    "y": 143
    },
-   "id": 55,
+   "id": 59,
    "panels": [],
    "title": "投机解码 · 随实际配置显示",
    "type": "row"
@@ -5213,9 +5573,9 @@
     "h": 8,
     "w": 12,
     "x": 0,
-    "y": 136
+    "y": 144
    },
-   "id": 56,
+   "id": 60,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -5259,9 +5619,9 @@
     "h": 1,
     "w": 24,
     "x": 0,
-    "y": 144
+    "y": 152
    },
-   "id": 57,
+   "id": 61,
    "panels": [],
    "title": "HTTP · 引擎原生指标",
    "type": "row"
@@ -5333,9 +5693,9 @@
     "h": 8,
     "w": 12,
     "x": 0,
-    "y": 145
+    "y": 153
    },
-   "id": 58,
+   "id": 62,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -5382,9 +5742,9 @@
     "h": 8,
     "w": 12,
     "x": 12,
-    "y": 145
+    "y": 153
    },
-   "id": 59,
+   "id": 63,
    "options": {
     "code": {
      "language": "plaintext",
@@ -5465,9 +5825,9 @@
     "h": 7,
     "w": 12,
     "x": 0,
-    "y": 153
+    "y": 161
    },
-   "id": 60,
+   "id": 64,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -5588,9 +5948,9 @@
     "h": 7,
     "w": 12,
     "x": 12,
-    "y": 153
+    "y": 161
    },
-   "id": 61,
+   "id": 65,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -5660,9 +6020,9 @@
     "h": 1,
     "w": 24,
     "x": 0,
-    "y": 160
+    "y": 168
    },
-   "id": 62,
+   "id": 66,
    "panels": [],
    "title": "本机 8×RTX 5090 · GPU 与主机",
    "type": "row"
@@ -5734,9 +6094,9 @@
     "h": 8,
     "w": 12,
     "x": 0,
-    "y": 161
+    "y": 169
    },
-   "id": 63,
+   "id": 67,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -5841,9 +6201,9 @@
     "h": 8,
     "w": 12,
     "x": 12,
-    "y": 161
+    "y": 169
    },
-   "id": 64,
+   "id": 68,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -5948,9 +6308,9 @@
     "h": 8,
     "w": 12,
     "x": 0,
-    "y": 169
+    "y": 177
    },
-   "id": 65,
+   "id": 69,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -6055,9 +6415,9 @@
     "h": 8,
     "w": 12,
     "x": 12,
-    "y": 169
+    "y": 177
    },
-   "id": 66,
+   "id": 70,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -6162,9 +6522,9 @@
     "h": 7,
     "w": 12,
     "x": 0,
-    "y": 177
+    "y": 185
    },
-   "id": 67,
+   "id": 71,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -6295,9 +6655,9 @@
     "h": 7,
     "w": 12,
     "x": 12,
-    "y": 177
+    "y": 185
    },
-   "id": 68,
+   "id": 72,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -6367,9 +6727,9 @@
     "h": 1,
     "w": 24,
     "x": 0,
-    "y": 192
+    "y": 200
    },
-   "id": 69,
+   "id": 73,
    "panels": [],
    "title": "Mamba SSM · GPU 状态池与主机缓存",
    "type": "row"
@@ -6411,9 +6771,9 @@
     "h": 5,
     "w": 12,
     "x": 0,
-    "y": 193
+    "y": 201
    },
-   "id": 70,
+   "id": 74,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -6479,9 +6839,9 @@
     "h": 5,
     "w": 12,
     "x": 12,
-    "y": 193
+    "y": 201
    },
-   "id": 71,
+   "id": 75,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -6587,9 +6947,9 @@
     "h": 7,
     "w": 12,
     "x": 0,
-    "y": 198
+    "y": 206
    },
-   "id": 72,
+   "id": 76,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -6708,9 +7068,9 @@
     "h": 7,
     "w": 12,
     "x": 12,
-    "y": 198
+    "y": 206
    },
-   "id": 73,
+   "id": 77,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -6767,9 +7127,9 @@
     "h": 1,
     "w": 24,
     "x": 0,
-    "y": 205
+    "y": 213
    },
-   "id": 74,
+   "id": 78,
    "panels": [],
    "title": "HiCache · GPU → 本地主机 DRAM（L2）",
    "type": "row"
@@ -6841,9 +7201,9 @@
     "h": 7,
     "w": 12,
     "x": 0,
-    "y": 206
+    "y": 214
    },
-   "id": 75,
+   "id": 79,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -6961,9 +7321,9 @@
     "h": 7,
     "w": 12,
     "x": 12,
-    "y": 206
+    "y": 214
    },
-   "id": 76,
+   "id": 80,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -7120,9 +7480,9 @@
     "h": 7,
     "w": 12,
     "x": 0,
-    "y": 213
+    "y": 221
    },
-   "id": 77,
+   "id": 81,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -7227,9 +7587,9 @@
     "h": 7,
     "w": 12,
     "x": 12,
-    "y": 213
+    "y": 221
    },
-   "id": 78,
+   "id": 82,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -7334,9 +7694,9 @@
     "h": 7,
     "w": 12,
     "x": 12,
-    "y": 220
+    "y": 228
    },
-   "id": 79,
+   "id": 83,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -7380,9 +7740,9 @@
     "h": 1,
     "w": 24,
     "x": 0,
-    "y": 227
+    "y": 235
    },
-   "id": 80,
+   "id": 84,
    "panels": [],
    "title": "采集与调度",
    "type": "row"
@@ -7454,9 +7814,9 @@
     "h": 7,
     "w": 12,
     "x": 0,
-    "y": 228
+    "y": 236
    },
-   "id": 81,
+   "id": 85,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -7561,9 +7921,9 @@
     "h": 7,
     "w": 12,
     "x": 12,
-    "y": 228
+    "y": 236
    },
-   "id": 82,
+   "id": 86,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -7668,9 +8028,9 @@
     "h": 7,
     "w": 12,
     "x": 0,
-    "y": 235
+    "y": 243
    },
-   "id": 83,
+   "id": 87,
    "interval": "2s",
    "maxDataPoints": 600,
    "options": {
@@ -7730,9 +8090,9 @@
     "h": 7,
     "w": 12,
     "x": 12,
-    "y": 235
+    "y": 243
    },
-   "id": 84,
+   "id": 88,
    "options": {
     "code": {
      "language": "plaintext",
@@ -7765,6 +8125,6 @@
  "timezone": "browser",
  "title": "Qwen3.8-27B-FP8 推理监控",
  "uid": "qwen38-deploy",
- "version": 2,
+ "version": 3,
  "weekStart": "monday"
 }

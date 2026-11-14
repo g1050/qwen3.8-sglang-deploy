@@ -1,5 +1,7 @@
 # Qwen3.8-27B-FP8 部署管理
 
+**v0.2.1：** 修复 L3（v0.2.0 写入的数据读不回来）；实现状态池（Mamba）按租约淘汰，因稳定性未定默认关闭；新增分池淘汰和主机状态槽指标。对外 TTL 语义不变。见 [docs/ttl-v021.md](docs/ttl-v021.md)，其中"已知问题"一节记录了一个未解决的调度器崩溃。
+
 **v0.2.0：** 在 v0.1.0 基础上增加 Prompt Cache TTL（5m / 1h，默认 5m，字段与 Kimi 官方端点对照校准）和按 TTL 门控的 L3，默认全部开启；8 并发性能与 v0.1.0 baseline 持平（−0.6% / −1.0%）。设计见 [docs/design/ttl-plan1.md](docs/design/ttl-plan1.md)，开发文档见 [docs/ttl-v020.md](docs/ttl-v020.md)，结果见 [results/README.md](results/README.md)。
 
 **v0.1.0：** 本机 8×RTX 5090 上的 SGLang 0.5.20 服务，模型名 `Qwen3.8-27B-FP8`，端口 8000。默认服务为真实解码，**TTL 与 L3 默认关闭**，L2 主机内存缓存按内存自动定容（本机每 rank 47 GB）。压测使用独立的 `performance` 配置（原生 MTP + 模拟接受率），结果见 [results/README.md](results/README.md)，监控见 [docs/monitoring.md](docs/monitoring.md)。

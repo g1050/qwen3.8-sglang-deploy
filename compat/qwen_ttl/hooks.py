@@ -111,7 +111,9 @@ def lease_rank(node):
 
 
 LEASE_NAMES = ('beyond', 'expired', 'valid')
-STATE_ORDER = os.environ.get('QWEN_TTL_STATE_ORDER', '1') != '0'   # diagnosis: 0 restores the native state-pool LRU
+# Lease-ranked eviction for the state pools. Off by default: 1h runs with it on ended in the engine's
+# idle pool-check failure 2 times out of 3 (1 of 7 without it); cause not established. See docs/ttl-v021.md.
+STATE_ORDER = os.environ.get('QWEN_TTL_STATE_ORDER', '0') == '1'
 STATE_WINDOW = 4096    # state-pool LRU entries examined ahead of one eviction pass (the whole pool in practice)
 
 

@@ -111,9 +111,21 @@ TTL_PANELS = [
      [(idle('hit', 0.5), '计费命中 P50'), (idle('hit', 0.95), '计费命中 P95'),
       (idle('expired_reuse', 0.5), '过期复用 P50'), (idle('expired_reuse', 0.95), '过期复用 P95')],
      '用于评估留存上限 T_keep 取多长才划算（设计 4.10）。'),
+    ('row', '淘汰 · KV 池与状态池', 24, 1, None, [], ''),
+    ('timeseries', 'GPU 淘汰 · 按池和租约状态', 8, 7, 'short',
+     [(f'sum by (pool, lease) (rate(qwen_ttl_evictions_total{TTL},layer="device"}}{R}))', '{{pool}} · {{lease}}')],
+     'kv 单位为 token/s，mamba 为状态槽/s。valid 表示被淘汰时租约仍有效。只有 mamba 在动而 kv 不动，说明先见底的是状态池。'),
+    ('timeseries', '主机（L2）淘汰 · 按池和租约状态', 8, 7, 'short',
+     [(f'sum by (pool, lease) (rate(qwen_ttl_evictions_total{TTL},layer="host"}}{R}))', '{{pool}} · {{lease}}')],
+     'kv 单位为 token/s，mamba 为状态槽/s。'),
+    ('timeseries', '主机状态槽占用', 8, 7, 'short',
+     [(f'max(qwen_ttl_host_state_slots{TTL},state="used"}})', '已用'),
+      (f'max(qwen_ttl_host_state_slots{TTL},state="total"}})', '总量')],
+     '主机 Mamba 状态池（引擎不导出，由 TTL 适配层采样）。GPU 状态槽见上方 Mamba 面板。'),
     ('row', 'L3 · 本地 NVMe（仅 1h 档）', 24, 1, None, [], ''),
     ('timeseries', 'L3 写入与丢弃', 8, 7, 'suffix:tok/s',
-     [(tok('l3_written'), '写入'), (tok('l3_dropped'), '丢弃 · 写入预算用完')],
+     [(tok('l3_written'), '写入'), (tok('l3_dropped'), '丢弃 · 写入预算用完'),
+      (tok('l3_skipped_.*'), '跳过 · 无状态 / 非 1h / 将到期 / 无主机副本')],
      'L2 淘汰队尾里租约有效的 1h 条目。丢弃表示寿命预算不足。'),
     ('timeseries', 'L3 查盘与读回', 8, 7, 'short',
      [(f'sum(increase(qwen_ttl_tokens_total{TTL},kind="l3_lookup"}}{R}))', '查盘次数'),
@@ -181,7 +193,7 @@ def build(reference):
     panels = sorted(panels + added, key=lambda p: (p['gridPos']['y'], p['gridPos']['x']))
     for index, panel in enumerate(panels):
         panel['id'] = index + 1
-    board.update(panels=panels, id=None, uid='qwen38-deploy', version=2, title=f'{MODEL} 推理监控',
+    board.update(panels=panels, id=None, uid='qwen38-deploy', version=3, title=f'{MODEL} 推理监控',
                  tags=['qwen3.8', 'sglang'], links=[],
                  description=f"本机 {MODEL} / SGLang / 8×RTX 5090；:{CFG['port']} 服务指标，复用现有 Prometheus、GPU exporter 和 node-exporter。")
     return board

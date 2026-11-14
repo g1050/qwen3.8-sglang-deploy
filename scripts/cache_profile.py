@@ -42,6 +42,8 @@ def apply_profile(cfg, server_args, server_env, profile, memory_gb=None, disk_by
     server_env = dict(server_env)
     if ttl.get('enabled'):
         server_env.update(PYTHONPATH='/compat', QWEN_TTL_KEEP_SECONDS=str(ttl['keep_seconds']))
+        if ttl.get('state_pool_lease_order'):
+            server_env['QWEN_TTL_STATE_ORDER'] = '1'
         # Acceptance / benchmark-only switches, taken from the operator's environment.
         for name in ('QWEN_TTL_TEST_CLOCK', 'QWEN_TTL_DEFAULT_SECONDS', 'QWEN_TTL_L3_WRITES', 'QWEN_TTL_STATE_ORDER', 'QWEN_TTL_DEBUG'):
             if os.environ.get(name):

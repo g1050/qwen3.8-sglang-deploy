@@ -1,0 +1,1 @@
+Validated aiperf request error rate: 0/357 = 0.000% <= 10.000%

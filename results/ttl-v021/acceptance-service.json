@@ -5,22 +5,22 @@
   {
    "check": "S3 default tier is 5m and writes",
    "ok": true,
-   "detail": "{'read': 0, 'write_5m': 5376, 'write_1h': 0, 'input': 203}"
+   "detail": "{'read': 0, 'write_5m': 5376, 'write_1h': 0, 'input': 224}"
   },
   {
    "check": "S2 partial block is plain input",
    "ok": true,
-   "detail": "{'read': 0, 'write_5m': 5376, 'write_1h': 0, 'input': 203}"
+   "detail": "{'read': 0, 'write_5m': 5376, 'write_1h': 0, 'input': 224}"
   },
   {
    "check": "S10 full hit has no write",
    "ok": true,
-   "detail": "{'read': 5376, 'write_5m': 0, 'write_1h': 0, 'input': 203}"
+   "detail": "{'read': 5376, 'write_5m': 0, 'write_1h': 0, 'input': 224}"
   },
   {
    "check": "S1 change inside the prefix stops reuse there",
    "ok": true,
-   "detail": "{'read': 2560, 'write_5m': 2816, 'write_1h': 0, 'input': 205}"
+   "detail": "{'read': 2560, 'write_5m': 2816, 'write_1h': 0, 'input': 226}"
   },
   {
    "check": "S7 5m: idle TTL-1s still hits",
@@ -35,7 +35,7 @@
   {
    "check": "S7 5m: idle TTL+1s is a miss",
    "ok": true,
-   "detail": "{'read': 0, 'write_5m': 5376, 'write_1h': 0, 'input': 203}"
+   "detail": "{'read': 0, 'write_5m': 5376, 'write_1h': 0, 'input': 224}"
   },
   {
    "check": "5.4 expired data is reused internally, invisibly",
@@ -50,7 +50,7 @@
   {
    "check": "1h write is reported in the 1h field",
    "ok": true,
-   "detail": "{'read': 0, 'write_5m': 0, 'write_1h': 5376, 'input': 166}"
+   "detail": "{'read': 0, 'write_5m': 0, 'write_1h': 5376, 'input': 213}"
   },
   {
    "check": "S5 1h: hit at +30m",
@@ -75,22 +75,22 @@
   {
    "check": "S6 1h request on a valid 5m prefix: hit, new blocks written as 5m",
    "ok": true,
-   "detail": "{'read': 5376, 'write_5m': 2560, 'write_1h': 0, 'input': 237}"
+   "detail": "{'read': 5376, 'write_5m': 2816, 'write_1h': 0, 'input': 37}"
   },
   {
    "check": "S6 after full expiry the new tier applies",
    "ok": true,
-   "detail": "{'read': 0, 'write_5m': 0, 'write_1h': 7936, 'input': 237}"
+   "detail": "{'read': 0, 'write_5m': 0, 'write_1h': 8192, 'input': 37}"
   },
   {
    "check": "S6 5m request on a valid 1h prefix: new blocks written as 1h",
    "ok": true,
-   "detail": "{'read': 5376, 'write_5m': 0, 'write_1h': 2816, 'input': 9}"
+   "detail": "{'read': 5376, 'write_5m': 0, 'write_1h': 2816, 'input': 8}"
   },
   {
    "check": "S8 isolation domains do not share",
    "ok": true,
-   "detail": "({'read': 0, 'write_5m': 5376, 'write_1h': 0, 'input': 223}, {'read': 5376, 'write_5m': 0, 'write_1h': 0, 'input': 223})"
+   "detail": "({'read': 0, 'write_5m': 5376, 'write_1h': 0, 'input': 194}, {'read': 5376, 'write_5m': 0, 'write_1h': 0, 'input': 194})"
   },
   {
    "check": "S4 rejects ttl 10m",
@@ -115,7 +115,7 @@
   {
    "check": "retention: data idle beyond T_keep is neither billed nor reused",
    "ok": true,
-   "detail": "({'read': 0, 'write_5m': 5376, 'write_1h': 0, 'input': 169}, 63616.0, 63616.0)"
+   "detail": "({'read': 0, 'write_5m': 5376, 'write_1h': 0, 'input': 228}, 63680.0, 63680.0)"
   },
   {
    "check": "F chat: requests succeed",
@@ -125,12 +125,12 @@
   {
    "check": "F chat: 1h write then hit",
    "ok": true,
-   "detail": "({'read': 0, 'write_5m': 0, 'write_1h': 5376, 'input': 208}, {'read': 5376, 'write_5m': 0, 'write_1h': 0, 'input': 208})"
+   "detail": "({'read': 0, 'write_5m': 0, 'write_1h': 5376, 'input': 209}, {'read': 5376, 'write_5m': 0, 'write_1h': 0, 'input': 209})"
   },
   {
    "check": "F6 chat: streaming usage equals non-streaming",
    "ok": true,
-   "detail": "({'read': 5376, 'write_5m': 0, 'write_1h': 0, 'input': 208}, {'read': 5376, 'write_5m': 0, 'write_1h': 0, 'input': 208})"
+   "detail": "({'read': 5376, 'write_5m': 0, 'write_1h': 0, 'input': 209}, {'read': 5376, 'write_5m': 0, 'write_1h': 0, 'input': 209})"
   },
   {
    "check": "F5 chat write: headers match usage",
@@ -140,7 +140,7 @@
   {
    "check": "F1-3 chat write: read, write and input are disjoint and sum to the prompt",
    "ok": true,
-   "detail": "{'read': 0, 'write_5m': 0, 'write_1h': 5376, 'input': 208}"
+   "detail": "{'read': 0, 'write_5m': 0, 'write_1h': 5376, 'input': 209}"
   },
   {
    "check": "F5 chat hit: headers match usage",
@@ -150,7 +150,7 @@
   {
    "check": "F1-3 chat hit: read, write and input are disjoint and sum to the prompt",
    "ok": true,
-   "detail": "{'read': 5376, 'write_5m': 0, 'write_1h': 0, 'input': 208}"
+   "detail": "{'read': 5376, 'write_5m': 0, 'write_1h': 0, 'input': 209}"
   },
   {
    "check": "F7 chat: no physical-tier fields",
@@ -165,22 +165,22 @@
   {
    "check": "F responses: 1h write then hit",
    "ok": true,
-   "detail": "({'read': 0, 'write_5m': 0, 'write_1h': 5376, 'input': 247}, {'read': 5376, 'write_5m': 0, 'write_1h': 0, 'input': 247})"
+   "detail": "({'read': 0, 'write_5m': 0, 'write_1h': 5632, 'input': 34}, {'read': 5632, 'write_5m': 0, 'write_1h': 0, 'input': 34})"
   },
   {
    "check": "F6 responses: streaming usage equals non-streaming",
    "ok": true,
-   "detail": "({'read': 5376, 'write_5m': 0, 'write_1h': 0, 'input': 247}, {'read': 5376, 'write_5m': 0, 'write_1h': 0, 'input': 247})"
+   "detail": "({'read': 5632, 'write_5m': 0, 'write_1h': 0, 'input': 34}, {'read': 5632, 'write_5m': 0, 'write_1h': 0, 'input': 34})"
   },
   {
    "check": "F5 responses write: headers match usage",
    "ok": true,
-   "detail": "((0, 5376), 5376)"
+   "detail": "((0, 5632), 5632)"
   },
   {
    "check": "F1-3 responses write: read, write and input are disjoint and sum to the prompt",
    "ok": true,
-   "detail": "{'read': 0, 'write_5m': 0, 'write_1h': 5376, 'input': 247}"
+   "detail": "{'read': 0, 'write_5m': 0, 'write_1h': 5632, 'input': 34}"
   },
   {
    "check": "F5 responses hit: headers match usage",
@@ -190,7 +190,7 @@
   {
    "check": "F1-3 responses hit: read, write and input are disjoint and sum to the prompt",
    "ok": true,
-   "detail": "{'read': 5376, 'write_5m': 0, 'write_1h': 0, 'input': 247}"
+   "detail": "{'read': 5632, 'write_5m': 0, 'write_1h': 0, 'input': 34}"
   },
   {
    "check": "F7 responses: no physical-tier fields",
@@ -205,12 +205,12 @@
   {
    "check": "F messages: 1h write then hit",
    "ok": true,
-   "detail": "({'read': 0, 'write_5m': 0, 'write_1h': 5376, 'input': 233}, {'read': 5376, 'write_5m': 0, 'write_1h': 0, 'input': 233})"
+   "detail": "({'read': 0, 'write_5m': 0, 'write_1h': 5376, 'input': 215}, {'read': 5376, 'write_5m': 0, 'write_1h': 0, 'input': 215})"
   },
   {
    "check": "F6 messages: streaming usage equals non-streaming",
    "ok": true,
-   "detail": "({'read': 5376, 'write_5m': 0, 'write_1h': 0, 'input': 233}, {'read': 5376, 'write_5m': 0, 'write_1h': 0, 'input': 233})"
+   "detail": "({'read': 5376, 'write_5m': 0, 'write_1h': 0, 'input': 215}, {'read': 5376, 'write_5m': 0, 'write_1h': 0, 'input': 215})"
   },
   {
    "check": "F5 messages write: headers match usage",
@@ -220,7 +220,7 @@
   {
    "check": "F1-3 messages write: read, write and input are disjoint and sum to the prompt",
    "ok": true,
-   "detail": "{'read': 0, 'write_5m': 0, 'write_1h': 5376, 'input': 233}"
+   "detail": "{'read': 0, 'write_5m': 0, 'write_1h': 5376, 'input': 215}"
   },
   {
    "check": "F5 messages hit: headers match usage",
@@ -230,17 +230,17 @@
   {
    "check": "F1-3 messages hit: read, write and input are disjoint and sum to the prompt",
    "ok": true,
-   "detail": "{'read': 5376, 'write_5m': 0, 'write_1h': 0, 'input': 233}"
+   "detail": "{'read': 5376, 'write_5m': 0, 'write_1h': 0, 'input': 215}"
   },
   {
    "check": "F3 messages: input_tokens excludes read and write",
    "ok": true,
-   "detail": "{'input_tokens': 233, 'output_tokens': 4, 'cache_read_input_tokens': 5376, 'cache_creation_input_tokens': 0, 'cache_creation': {'ephemeral_5m_input_tokens': 0, 'ephemeral_1h_input_tokens': 0}}"
+   "detail": "{'input_tokens': 215, 'output_tokens': 4, 'cache_read_input_tokens': 5376, 'cache_creation_input_tokens': 0, 'cache_creation': {'ephemeral_5m_input_tokens': 0, 'ephemeral_1h_input_tokens': 0}}"
   },
   {
    "check": "F4 messages: block-level cache_control is ignored (default 5m)",
    "ok": true,
-   "detail": "{'read': 0, 'write_5m': 5632, 'write_1h': 0, 'input': 11}"
+   "detail": "{'read': 0, 'write_5m': 5376, 'write_1h': 0, 'input': 221}"
   },
   {
    "check": "F7 messages: no physical-tier fields",
@@ -250,7 +250,7 @@
   {
    "check": "F7 chat: return_cached_tokens_details exposes nothing",
    "ok": true,
-   "detail": "stop\", \"matched_stop\": 248046}], \"usage\": {\"prompt_tokens\": 5561, \"total_tokens\": 5563, \"completion_tokens\": 2, \"prompt_tokens_details\": {\"cache_write_tokens\": 5376}, \"reasoning_tokens\": 0}, \"metadata\": {\"weight_version\": \"default\", \"weight_versions\": [{\"version\": \"default\", \"start\": 0, \"end\": 2}]}}"
+   "detail": "stop\", \"matched_stop\": 248046}], \"usage\": {\"prompt_tokens\": 5608, \"total_tokens\": 5610, \"completion_tokens\": 2, \"prompt_tokens_details\": {\"cache_write_tokens\": 5376}, \"reasoning_tokens\": 0}, \"metadata\": {\"weight_version\": \"default\", \"weight_versions\": [{\"version\": \"default\", \"start\": 0, \"end\": 2}]}}"
   },
   {
    "check": "5.1 differential: 60 random requests equal the reference model",

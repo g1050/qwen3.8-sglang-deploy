@@ -1,6 +1,6 @@
 {
-  "project_commit": "a7dd99b1ee8703c05ff4e35499bca77111565491",
-  "started_at": "20261113T062323Z",
+  "project_commit": "91a6904895f2c5874f5b57e4f0cac09d795e1530",
+  "started_at": "20261113T121143Z",
   "concurrency": 8,
   "duration": 3600,
   "inferencex_commit": "0c3f1e24ede23985cf087dae4474e5519a44e37b",
@@ -32,8 +32,8 @@
       "l2_host_memory_gb": 503.4,
       "l2_total_gb": 376,
       "ttl_keep_seconds": 7200,
-      "namespace": "eec1bd32dd8ed6d0dfbd707d",
-      "container_storage_dir": "/cache/hicache-l3/eec1bd32dd8ed6d0dfbd707d/blocks",
+      "namespace": "740c987d45ea4f64271c6f63",
+      "container_storage_dir": "/cache/hicache-l3/740c987d45ea4f64271c6f63/blocks",
       "per_rank_max_size": "19067Mi",
       "l3_tokens_per_second": 111.1,
       "l3_daily_budget_gb": 1919,
@@ -51,7 +51,7 @@
       "SGLANG_SIMULATE_ACC_TOKEN_MODE": "real-draft-token",
       "PYTHONPATH": "/compat",
       "QWEN_TTL_KEEP_SECONDS": "7200",
-      "SGLANG_HICACHE_FILE_BACKEND_STORAGE_DIR": "/cache/hicache-l3/eec1bd32dd8ed6d0dfbd707d/blocks",
+      "SGLANG_HICACHE_FILE_BACKEND_STORAGE_DIR": "/cache/hicache-l3/740c987d45ea4f64271c6f63/blocks",
       "QWEN_TTL_L3_TOKENS_PER_SECOND": "111.079",
       "QWEN_TTL_L3_BURST_TOKENS": "66647"
     },
@@ -112,11 +112,11 @@
       "--hicache-storage-backend",
       "file",
       "--hicache-storage-prefetch-policy",
-      "timeout",
+      "wait_complete",
       "--hicache-storage-prefetch-retry-max-attempts",
       "1",
       "--hicache-storage-backend-extra-config",
-      "{\"enable_metadata_cache\":true,\"eviction_ratio\":0.9,\"file_storage_path\":\"/cache/hicache-l3/eec1bd32dd8ed6d0dfbd707d/blocks\",\"max_size\":\"19067Mi\",\"metadata_ttl\":-1,\"min_free_space\":\"1Ti\"}"
+      "{\"enable_metadata_cache\":true,\"eviction_ratio\":0.9,\"file_storage_path\":\"/cache/hicache-l3/740c987d45ea4f64271c6f63/blocks\",\"max_size\":\"19067Mi\",\"metadata_ttl\":-1,\"min_free_space\":\"1Ti\"}"
     ]
   },
   "server": {
@@ -154,8 +154,8 @@
     "SRT_FRONTEND_PORT": "8000",
     "AIPERF_SERVER_METRICS_URLS": "http://127.0.0.1:8000/metrics",
     "TOKENIZER": "/data/models/Qwen3.8-27B-FP8",
-    "RESULT_DIR": "/data/xkgao/qwen3.8-deploy/runtime/agentx-c8-20261113T062323Z",
-    "AGENTIC_OUTPUT_DIR": "/data/xkgao/qwen3.8-deploy/runtime/agentx-c8-20261113T062323Z",
+    "RESULT_DIR": "/data/xkgao/qwen3.8-deploy/runtime/agentx-c8-20261113T121143Z",
+    "AGENTIC_OUTPUT_DIR": "/data/xkgao/qwen3.8-deploy/runtime/agentx-c8-20261113T121143Z",
     "RESULT_FILENAME": "aggregate",
     "IS_MULTINODE": "false",
     "PRECISION": "fp8",

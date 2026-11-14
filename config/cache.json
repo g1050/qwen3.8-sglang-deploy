@@ -16,12 +16,14 @@
   },
   "ttl": {
     "enabled": true,
-    "status": "v0.2.0：5m / 1h 两档，默认 5m；适配层为 compat/qwen_ttl",
-    "keep_seconds": 7200
+    "status": "v0.2.1：5m / 1h 两档，默认 5m；适配层为 compat/qwen_ttl",
+    "keep_seconds": 7200,
+    "state_pool_lease_order": false,
+    "state_pool_lease_order_note": "状态池（Mamba）按租约淘汰，默认关闭；置为 true 后部署脚本设置 QWEN_TTL_STATE_ORDER=1。见 docs/ttl-v021.md。"
   },
   "l3": {
     "enabled": true,
-    "status": "v0.2.0：仅写入租约有效的 1h 档，L2 淘汰队尾触发，受写入预算限制",
+    "status": "v0.2.1：只写以带状态节点结尾的完整链；读回按页精确定位；受写入预算限制",
     "cache_format": "qwen38-v020-file-v1",
     "args": {
       "hicache-storage-backend": "file",

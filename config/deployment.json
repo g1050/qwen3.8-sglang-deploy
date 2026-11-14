@@ -1,5 +1,5 @@
 {
-  "version": "0.2.0",
+  "version": "0.2.1",
   "image": "local/sglang:qwen38-0.5.20",
   "image_id": "sha256:06e4f2ed21afde4ff513cda65070124e727ba23ccaeff7712b8c40e1097d611f",
   "image_upstream": "docker.io/lmsysorg/sglang:v0.5.20",
